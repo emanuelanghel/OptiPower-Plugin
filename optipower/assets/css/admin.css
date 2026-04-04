@@ -1,0 +1,43 @@
+.optipower-wrap .optipower-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+  max-width: 1200px;
+}
+
+.optipower-card {
+  background: #fff;
+  border: 1px solid #dcdcde;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.optipower-table code {
+  white-space: pre-wrap;
+  font-size: 12px;
+}
+
+.optipower-sev {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.optipower-sev-low {
+  background: #e6f6ea;
+  color: #1f7a36;
+}
+
+.optipower-sev-medium {
+  background: #fff2d8;
+  color: #9a6200;
+}
+
+.optipower-sev-high {
+  background: #fde8e8;
+  color: #a71d2a;
+}
+
