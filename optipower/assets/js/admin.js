@@ -238,6 +238,5 @@
   });
 
   refreshBtn.addEventListener("click", refresh);
-  setInterval(refresh, 5000);
   refresh();
 })();
