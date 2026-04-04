@@ -6,6 +6,7 @@ if (! defined('ABSPATH')) {
 class OptiPower_DB {
 	private static $table_exists_cache = null;
 	private static $ai_table_exists_cache = null;
+	private static $health_table_exists_cache = null;
 	private static $last_error = '';
 
 	public static function table_name() {
@@ -25,6 +26,7 @@ class OptiPower_DB {
 		$charset_collate = $wpdb->get_charset_collate();
 		$table           = self::table_name();
 		$ai_table        = self::ai_table_name();
+		$health_table    = self::health_table_name();
 		$sql             = "CREATE TABLE {$table} (
 			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
 			query_hash varchar(64) NOT NULL,
@@ -57,8 +59,19 @@ class OptiPower_DB {
 			KEY expires_at (expires_at)
 		) {$charset_collate};";
 		dbDelta($ai_sql);
+		$health_sql = "CREATE TABLE {$health_table} (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			score smallint(3) unsigned NOT NULL,
+			components_json text NOT NULL,
+			context_json text NOT NULL,
+			created_at datetime NOT NULL,
+			PRIMARY KEY (id),
+			KEY created_at (created_at)
+		) {$charset_collate};";
+		dbDelta($health_sql);
 		self::$table_exists_cache = true;
 		self::$ai_table_exists_cache = true;
+		self::$health_table_exists_cache = true;
 	}
 
 	public static function table_exists() {
@@ -74,7 +87,7 @@ class OptiPower_DB {
 	}
 
 	public static function ensure_tables() {
-		if (! self::table_exists() || ! self::ai_table_exists()) {
+		if (! self::table_exists() || ! self::ai_table_exists() || ! self::health_table_exists()) {
 			self::create_tables();
 		}
 	}
@@ -89,6 +102,23 @@ class OptiPower_DB {
 		$exists = $wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $table));
 		self::$ai_table_exists_cache = ($exists === $table);
 		return self::$ai_table_exists_cache;
+	}
+
+	public static function health_table_name() {
+		global $wpdb;
+		return $wpdb->prefix . 'optipower_health_scores';
+	}
+
+	public static function health_table_exists() {
+		if (self::$health_table_exists_cache !== null) {
+			return self::$health_table_exists_cache;
+		}
+
+		global $wpdb;
+		$table = self::health_table_name();
+		$exists = $wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $table));
+		self::$health_table_exists_cache = ($exists === $table);
+		return self::$health_table_exists_cache;
 	}
 
 	public static function insert_log($data) {
@@ -268,13 +298,116 @@ class OptiPower_DB {
 		}
 	}
 
+	public static function get_recent_summary($hours = 24) {
+		global $wpdb;
+		$table = self::table_name();
+		self::ensure_tables();
+		$hours = max(1, min(720, absint($hours)));
+
+		$row = $wpdb->get_row(
+			$wpdb->prepare(
+				"SELECT
+					COUNT(*) AS total_logs,
+					COALESCE(AVG(duration_ms), 0) AS avg_duration_ms,
+					COALESCE(MAX(duration_ms), 0) AS max_duration_ms
+				FROM {$table}
+				WHERE created_at >= DATE_SUB(NOW(), INTERVAL %d HOUR)",
+				$hours
+			),
+			ARRAY_A
+		);
+
+		return is_array($row) ? $row : array(
+			'total_logs'      => 0,
+			'avg_duration_ms' => 0,
+			'max_duration_ms' => 0,
+		);
+	}
+
+	public static function save_health_snapshot($score, $components, $context) {
+		global $wpdb;
+		$table = self::health_table_name();
+		self::ensure_tables();
+
+		return false !== $wpdb->insert(
+			$table,
+			array(
+				'score'           => max(0, min(100, absint($score))),
+				'components_json' => wp_json_encode(is_array($components) ? $components : array()),
+				'context_json'    => wp_json_encode(is_array($context) ? $context : array()),
+				'created_at'      => current_time('mysql'),
+			),
+			array('%d', '%s', '%s', '%s')
+		);
+	}
+
+	public static function get_health_history($limit = 26) {
+		global $wpdb;
+		$table = self::health_table_name();
+		self::ensure_tables();
+		$limit = max(1, min(104, absint($limit)));
+
+		$rows = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT id, score, components_json, context_json, created_at
+				FROM {$table}
+				ORDER BY created_at DESC
+				LIMIT %d",
+				$limit
+			),
+			ARRAY_A
+		);
+
+		if (! is_array($rows)) {
+			return array();
+		}
+
+		$rows = array_reverse($rows);
+		foreach ($rows as &$row) {
+			$row['components'] = json_decode((string) ($row['components_json'] ?? '{}'), true);
+			$row['context']    = json_decode((string) ($row['context_json'] ?? '{}'), true);
+		}
+		return $rows;
+	}
+
+	public static function get_last_health_snapshot() {
+		global $wpdb;
+		$table = self::health_table_name();
+		self::ensure_tables();
+
+		$row = $wpdb->get_row(
+			"SELECT id, score, components_json, context_json, created_at
+			FROM {$table}
+			ORDER BY created_at DESC
+			LIMIT 1",
+			ARRAY_A
+		);
+		if (! is_array($row)) {
+			return null;
+		}
+
+		$row['components'] = json_decode((string) ($row['components_json'] ?? '{}'), true);
+		$row['context']    = json_decode((string) ($row['context_json'] ?? '{}'), true);
+		return $row;
+	}
+
+	public static function clear_logs() {
+		global $wpdb;
+		$table = self::table_name();
+		self::ensure_tables();
+		$wpdb->query("TRUNCATE TABLE {$table}");
+	}
+
 	public static function drop_tables() {
 		global $wpdb;
 		$table = self::table_name();
 		$ai_table = self::ai_table_name();
+		$health_table = self::health_table_name();
 		$wpdb->query("DROP TABLE IF EXISTS {$table}");
 		$wpdb->query("DROP TABLE IF EXISTS {$ai_table}");
+		$wpdb->query("DROP TABLE IF EXISTS {$health_table}");
 		self::$table_exists_cache = false;
 		self::$ai_table_exists_cache = false;
+		self::$health_table_exists_cache = false;
 	}
 }

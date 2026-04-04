@@ -57,6 +57,16 @@ class OptiPower_REST {
 				),
 			)
 		);
+
+		register_rest_route(
+			'optipower/v1',
+			'/health',
+			array(
+				'methods'             => WP_REST_Server::READABLE,
+				'permission_callback' => array($this, 'can_access'),
+				'callback'            => array($this, 'get_health'),
+			)
+		);
 	}
 
 	public function can_access() {
@@ -135,6 +145,11 @@ class OptiPower_REST {
 			'cached'   => false,
 			'analysis' => $analysis,
 		));
+	}
+
+	public function get_health() {
+		$health = new OptiPower_Health();
+		return rest_ensure_response($health->get_dashboard_payload());
 	}
 
 	private function consume_daily_ai_quota($limit) {

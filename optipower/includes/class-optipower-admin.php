@@ -12,9 +12,11 @@ class OptiPower_Admin {
 		add_action('admin_post_optipower_monitor_self_test', array($this, 'handle_monitor_self_test'));
 		add_action('wp_ajax_optipower_get_logs', array($this, 'ajax_get_logs'));
 		add_action('wp_ajax_optipower_get_summary', array($this, 'ajax_get_summary'));
+		add_action('wp_ajax_optipower_get_health', array($this, 'ajax_get_health'));
 		add_action('wp_ajax_optipower_ai_analyze', array($this, 'ajax_ai_analyze'));
 		add_action('admin_post_optipower_ai_test', array($this, 'handle_ai_test'));
 		add_action('admin_post_optipower_ai_refresh_models', array($this, 'handle_ai_refresh_models'));
+		add_action('admin_post_optipower_clear_logs', array($this, 'handle_clear_logs'));
 	}
 
 	public function add_menu() {
@@ -52,6 +54,7 @@ class OptiPower_Admin {
 		wp_localize_script('optipower-admin', 'OptiPowerData', array(
 			'logsEndpoint'    => esc_url_raw(rest_url('optipower/v1/logs')),
 			'summaryEndpoint' => esc_url_raw(rest_url('optipower/v1/summary')),
+			'healthEndpoint'  => esc_url_raw(rest_url('optipower/v1/health')),
 			'analyzeEndpoint' => esc_url_raw(rest_url('optipower/v1/analyze')),
 			'ajaxUrl'         => esc_url_raw(admin_url('admin-ajax.php')),
 			'nonce'           => wp_create_nonce('wp_rest'),
@@ -128,6 +131,15 @@ class OptiPower_Admin {
 			'instrumentation_available' => OptiPower_Monitor::instrumentation_available(),
 			'monitor_debug'             => OptiPower_Monitor::get_debug_state(),
 		));
+	}
+
+	public function ajax_get_health() {
+		if (! current_user_can('manage_options')) {
+			wp_send_json_error(array('error' => 'Unauthorized'), 403);
+		}
+
+		$health = new OptiPower_Health();
+		wp_send_json_success($health->get_dashboard_payload());
 	}
 
 	public function ajax_ai_analyze() {
@@ -240,6 +252,26 @@ class OptiPower_Admin {
 		exit;
 	}
 
+	public function handle_clear_logs() {
+		if (! current_user_can('manage_options')) {
+			wp_die('Unauthorized', 403);
+		}
+
+		check_admin_referer('optipower_clear_logs');
+		OptiPower_DB::clear_logs();
+
+		$url = add_query_arg(
+			array(
+				'page'        => 'optipower',
+				'tab'         => 'monitor',
+				'logs_cleared'=> '1',
+			),
+			admin_url('admin.php')
+		);
+		wp_safe_redirect($url);
+		exit;
+	}
+
 	public function render_page() {
 		$settings    = OptiPower_Settings::get_all();
 		$current_tab = isset($_GET['tab']) ? sanitize_key(wp_unslash($_GET['tab'])) : 'monitor';
@@ -315,11 +347,23 @@ class OptiPower_Admin {
 
 	private function render_monitor_tab() {
 		$self_test = isset($_GET['self_test']) && $_GET['self_test'] === '1';
+		$logs_cleared = isset($_GET['logs_cleared']) && $_GET['logs_cleared'] === '1';
+		$monitor_enabled = (bool) OptiPower_Settings::get('enabled', 1);
 		?>
 		<div class="optipower-card-head">
 			<h2>Realtime Slow Query Panel</h2>
 			<p>Manual refresh mode. Click Refresh Now whenever you want the latest query events.</p>
 		</div>
+		<?php if (! $monitor_enabled) : ?>
+			<div class="optipower-inline-warning">
+				<p>Monitoring is disabled. Showing historical logs only; no new queries will be captured.</p>
+			</div>
+		<?php endif; ?>
+		<?php if ($logs_cleared) : ?>
+			<div class="optipower-inline-warning optipower-inline-success">
+				<p>Query logs cleared successfully.</p>
+			</div>
+		<?php endif; ?>
 		<?php if ($self_test) : ?>
 			<div class="optipower-inline-warning">
 				<p>Self-test query executed and logged.</p>
@@ -331,10 +375,23 @@ class OptiPower_Admin {
 			<input id="optipower-min-duration" type="number" min="0" value="0" />
 			<button id="optipower-refresh" class="button button-secondary">Refresh Now</button>
 		</div>
+		<div class="optipower-health-wrap">
+			<div class="optipower-health-head">
+				<h3>Website Health Status</h3>
+				<p>Real-time score and weekly 7-day snapshot trend.</p>
+			</div>
+			<div id="optipower-health-kpis" class="optipower-health-kpis"></div>
+			<canvas id="optipower-health-chart" width="900" height="220"></canvas>
+		</div>
 		<form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="optipower-self-test-form">
 			<?php wp_nonce_field('optipower_monitor_self_test'); ?>
 			<input type="hidden" name="action" value="optipower_monitor_self_test" />
 			<button type="submit" class="button">Run Monitor Self-Test</button>
+		</form>
+		<form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="optipower-self-test-form">
+			<?php wp_nonce_field('optipower_clear_logs'); ?>
+			<input type="hidden" name="action" value="optipower_clear_logs" />
+			<button type="submit" class="button">Clear Logs Now</button>
 		</form>
 		<table class="widefat striped optipower-table">
 			<thead>
