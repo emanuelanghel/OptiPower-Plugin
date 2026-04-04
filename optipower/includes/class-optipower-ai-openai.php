@@ -57,6 +57,50 @@ class OptiPower_OpenAI_Service implements OptiPower_AI_Service {
 		);
 	}
 
+	public function test_connection() {
+		if ($this->api_key === '' || $this->model === '') {
+			return array(
+				'ok'    => false,
+				'error' => 'Missing API key or model.',
+			);
+		}
+
+		$payload = array(
+			'model' => $this->model,
+			'input' => 'Reply with OK',
+			'max_output_tokens' => 20,
+		);
+
+		$http_response = wp_remote_post(
+			'https://api.openai.com/v1/responses',
+			array(
+				'timeout' => 20,
+				'headers' => array(
+					'Authorization' => 'Bearer ' . $this->api_key,
+					'Content-Type'  => 'application/json',
+				),
+				'body'    => wp_json_encode($payload),
+			)
+		);
+
+		if (is_wp_error($http_response)) {
+			return array(
+				'ok'    => false,
+				'error' => $http_response->get_error_message(),
+			);
+		}
+
+		$code = (int) wp_remote_retrieve_response_code($http_response);
+		if ($code < 200 || $code >= 300) {
+			return array(
+				'ok'    => false,
+				'error' => 'HTTP ' . $code,
+			);
+		}
+
+		return array('ok' => true);
+	}
+
 	private function call_openai($query, $duration_ms, $context, $rules) {
 		$context = is_array($context) ? $context : array();
 
@@ -190,4 +234,3 @@ class OptiPower_OpenAI_Service implements OptiPower_AI_Service {
 		);
 	}
 }
-

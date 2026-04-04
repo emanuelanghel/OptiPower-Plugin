@@ -13,6 +13,7 @@ class OptiPower_Admin {
 		add_action('wp_ajax_optipower_get_logs', array($this, 'ajax_get_logs'));
 		add_action('wp_ajax_optipower_get_summary', array($this, 'ajax_get_summary'));
 		add_action('wp_ajax_optipower_ai_analyze', array($this, 'ajax_ai_analyze'));
+		add_action('admin_post_optipower_ai_test', array($this, 'handle_ai_test'));
 	}
 
 	public function add_menu() {
@@ -153,6 +154,49 @@ class OptiPower_Admin {
 		}
 
 		wp_send_json_error(array('error' => 'Unknown AI analyze response'), 500);
+	}
+
+	public function handle_ai_test() {
+		if (! current_user_can('manage_options')) {
+			wp_die('Unauthorized', 403);
+		}
+
+		check_admin_referer('optipower_ai_test');
+
+		$settings = OptiPower_Settings::get_all();
+		$status   = 'error';
+		$message  = 'Unknown AI validation error.';
+
+		if (empty($settings['ai_enabled'])) {
+			$message = 'AI is disabled. Enable AI Analysis first.';
+		} elseif (($settings['ai_provider'] ?? '') !== 'openai') {
+			$message = 'Unsupported AI provider. Use "openai".';
+		} elseif (empty($settings['ai_model'])) {
+			$message = 'Missing AI model.';
+		} elseif (empty($settings['ai_api_key'])) {
+			$message = 'Missing OpenAI API key.';
+		} else {
+			$service = new OptiPower_OpenAI_Service((string) $settings['ai_api_key'], (string) $settings['ai_model']);
+			$result  = $service->test_connection();
+			if (! empty($result['ok'])) {
+				$status  = 'success';
+				$message = 'AI connection test succeeded.';
+			} else {
+				$message = 'AI connection test failed: ' . sanitize_text_field((string) ($result['error'] ?? 'Unknown error'));
+			}
+		}
+
+		$url = add_query_arg(
+			array(
+				'page'      => 'optipower',
+				'tab'       => 'ai',
+				'ai_test'   => $status,
+				'ai_notice' => rawurlencode($message),
+			),
+			admin_url('admin.php')
+		);
+		wp_safe_redirect($url);
+		exit;
 	}
 
 	public function render_page() {
@@ -347,11 +391,27 @@ class OptiPower_Admin {
 	}
 
 	private function render_ai_tab($settings) {
+		$notices = $this->get_ai_notices($settings);
+		if (isset($_GET['ai_test'])) {
+			$test_status = sanitize_key(wp_unslash($_GET['ai_test']));
+			$test_msg    = isset($_GET['ai_notice']) ? rawurldecode(sanitize_text_field(wp_unslash($_GET['ai_notice']))) : '';
+			if ($test_msg !== '') {
+				$notices[] = array(
+					'type'    => $test_status === 'success' ? 'success' : 'error',
+					'message' => $test_msg,
+				);
+			}
+		}
 		?>
 		<div class="optipower-card-head">
 			<h2>AI Analysis</h2>
 			<p>Use OpenAI to generate structured recommendations for slow queries.</p>
 		</div>
+		<?php foreach ($notices as $notice) : ?>
+			<div class="optipower-inline-warning optipower-inline-<?php echo esc_attr($notice['type']); ?>">
+				<p><?php echo esc_html($notice['message']); ?></p>
+			</div>
+		<?php endforeach; ?>
 		<form method="post" action="options.php">
 			<?php settings_fields('optipower_settings_group'); ?>
 			<div class="optipower-form-grid">
@@ -382,7 +442,61 @@ class OptiPower_Admin {
 				<?php submit_button('Save AI Settings', 'primary', 'submit', false); ?>
 			</div>
 		</form>
+		<form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="optipower-self-test-form">
+			<?php wp_nonce_field('optipower_ai_test'); ?>
+			<input type="hidden" name="action" value="optipower_ai_test" />
+			<button type="submit" class="button">Test AI Connection</button>
+		</form>
 		<?php
+	}
+
+	private function get_ai_notices($settings) {
+		$notices = array();
+
+		if (empty($settings['ai_enabled'])) {
+			$notices[] = array(
+				'type'    => 'warning',
+				'message' => 'AI Analysis is currently disabled.',
+			);
+			return $notices;
+		}
+
+		if (($settings['ai_provider'] ?? '') !== 'openai') {
+			$notices[] = array(
+				'type'    => 'error',
+				'message' => 'Unsupported provider. Set provider to "openai".',
+			);
+		}
+
+		if (empty($settings['ai_model'])) {
+			$notices[] = array(
+				'type'    => 'error',
+				'message' => 'AI model is missing.',
+			);
+		}
+
+		if (empty($settings['ai_api_key'])) {
+			$notices[] = array(
+				'type'    => 'error',
+				'message' => 'OpenAI API key is missing.',
+			);
+		}
+
+		if (! wp_http_supports(array('ssl' => true))) {
+			$notices[] = array(
+				'type'    => 'error',
+				'message' => 'Your server cannot perform secure outbound HTTPS requests required for AI.',
+			);
+		}
+
+		if (empty($notices)) {
+			$notices[] = array(
+				'type'    => 'success',
+				'message' => 'AI configuration looks valid. Use "Test AI Connection" to verify runtime access.',
+			);
+		}
+
+		return $notices;
 	}
 
 	private function render_general_tab($settings) {
