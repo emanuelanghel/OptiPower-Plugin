@@ -34,6 +34,23 @@
     return res.json();
   }
 
+  async function analyzeWithAI(queryHash) {
+    const res = await fetch(window.OptiPowerData.analyzeEndpoint, {
+      method: "POST",
+      headers: {
+        ...headers,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ query_hash: queryHash }),
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data && data.error ? data.error : "AI analysis failed");
+    }
+    return data;
+  }
+
   function renderSummary(data) {
     const s = data && data.summary ? data.summary : {};
     const available = data && data.instrumentation_available;
@@ -72,17 +89,26 @@
         <strong>Last Run</strong>
         <span>${esc(d.last_run || "n/a")}</span>
       </div>
+      <div class="optipower-summary-card">
+        <strong>Insert Failures</strong>
+        <span>${esc(d.insert_failures || 0)}</span>
+      </div>
+      <div class="optipower-summary-card">
+        <strong>DB Error</strong>
+        <span>${esc(d.db_last_error || "none")}</span>
+      </div>
     `;
   }
 
   function renderRows(rows) {
     if (!Array.isArray(rows) || rows.length === 0) {
-      rowsEl.innerHTML = '<tr><td colspan="7">No matching logs yet.</td></tr>';
+      rowsEl.innerHTML = '<tr><td colspan="9">No matching logs yet.</td></tr>';
       return;
     }
 
     rowsEl.innerHTML = rows
       .map((row) => {
+        const hash = esc(row.query_hash || "");
         return `
           <tr>
             <td>${esc(Number(row.duration_ms || 0).toFixed(2))} ms</td>
@@ -91,11 +117,49 @@
             <td><span class="optipower-sev optipower-sev-${esc(row.severity)}">${esc(row.severity)}</span></td>
             <td>${esc(row.recommendation)}</td>
             <td><code>${esc((row.query_sample || "").slice(0, 180))}</code></td>
+            <td id="optipower-ai-${hash}" class="optipower-ai-cell">Not analyzed</td>
+            <td>
+              <button class="button button-small optipower-ai-btn" data-query-hash="${hash}">Analyze with AI</button>
+            </td>
             <td>${esc(row.created_at)}</td>
           </tr>
         `;
       })
       .join("");
+  }
+
+  function renderAIResult(targetEl, analysis, cached) {
+    const fixes = Array.isArray(analysis && analysis.fixes) ? analysis.fixes.slice(0, 2) : [];
+    const fixesHtml = fixes
+      .map((f) => `<li><strong>${esc(f.title || "Fix")}:</strong> ${esc(f.action || "")}</li>`)
+      .join("");
+    targetEl.innerHTML = `
+      <div class="optipower-ai-result">
+        <p><strong>${cached ? "Cached" : "Fresh"}:</strong> ${esc((analysis && analysis.summary) || "No summary")}</p>
+        <p><strong>Root cause:</strong> ${esc((analysis && analysis.root_cause) || "n/a")}</p>
+        <p><strong>Confidence:</strong> ${esc(Number((analysis && analysis.confidence) || 0).toFixed(2))}</p>
+        ${fixesHtml ? `<ul>${fixesHtml}</ul>` : ""}
+      </div>
+    `;
+  }
+
+  async function onAnalyzeClick(btn) {
+    const hash = btn.getAttribute("data-query-hash");
+    const target = document.getElementById(`optipower-ai-${hash}`);
+    if (!hash || !target) return;
+
+    btn.disabled = true;
+    btn.textContent = "Analyzing...";
+    target.textContent = "Running AI analysis...";
+    try {
+      const result = await analyzeWithAI(hash);
+      renderAIResult(target, result.analysis || {}, !!result.cached);
+    } catch (e) {
+      target.textContent = e.message || "AI analysis failed.";
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Analyze with AI";
+    }
   }
 
   async function refresh() {
@@ -106,12 +170,19 @@
       renderSummary(summary);
       renderRows(logs);
     } catch (e) {
-      rowsEl.innerHTML = `<tr><td colspan="7">Failed to load data.</td></tr>`;
+      rowsEl.innerHTML = `<tr><td colspan="9">Failed to load data.</td></tr>`;
     } finally {
       refreshBtn.disabled = false;
       refreshBtn.textContent = "Refresh Now";
     }
   }
+
+  rowsEl.addEventListener("click", (event) => {
+    const btn = event.target && event.target.closest(".optipower-ai-btn");
+    if (btn) {
+      onAnalyzeClick(btn);
+    }
+  });
 
   refreshBtn.addEventListener("click", refresh);
   setInterval(refresh, 5000);

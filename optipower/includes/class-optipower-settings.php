@@ -24,6 +24,13 @@ class OptiPower_Settings {
 			'image_lazy_load'         => 1,
 			'image_convert_webp'      => 0,
 			'image_jpeg_quality'      => 82,
+			'ai_enabled'              => 0,
+			'ai_provider'             => 'openai',
+			'ai_model'                => 'gpt-4.1-mini',
+			'ai_api_key'              => '',
+			'ai_cache_hours'          => 24,
+			'ai_max_daily_requests'   => 100,
+			'ai_redact_literals'      => 1,
 		);
 	}
 
@@ -57,6 +64,23 @@ class OptiPower_Settings {
 			return empty($current[$key]) ? 0 : 1;
 		};
 
+		$string_or_current = static function ($key) use ($input, $current) {
+			if (array_key_exists($key, $input)) {
+				return sanitize_text_field((string) $input[$key]);
+			}
+			return sanitize_text_field((string) ($current[$key] ?? ''));
+		};
+
+		$secret_or_current = static function ($key) use ($input, $current) {
+			if (array_key_exists($key, $input)) {
+				$raw = trim((string) $input[$key]);
+				if ($raw !== '') {
+					return sanitize_text_field($raw);
+				}
+			}
+			return sanitize_text_field((string) ($current[$key] ?? ''));
+		};
+
 		return array(
 			'enabled'                 => $bool_or_current('enabled'),
 			'slow_query_threshold_ms' => $int_or_current('slow_query_threshold_ms', 10),
@@ -74,6 +98,13 @@ class OptiPower_Settings {
 			'image_lazy_load'         => $bool_or_current('image_lazy_load'),
 			'image_convert_webp'      => $bool_or_current('image_convert_webp'),
 			'image_jpeg_quality'      => $int_or_current('image_jpeg_quality', 40, 100),
+			'ai_enabled'              => $bool_or_current('ai_enabled'),
+			'ai_provider'             => $string_or_current('ai_provider'),
+			'ai_model'                => $string_or_current('ai_model'),
+			'ai_api_key'              => $secret_or_current('ai_api_key'),
+			'ai_cache_hours'          => $int_or_current('ai_cache_hours', 1, 168),
+			'ai_max_daily_requests'   => $int_or_current('ai_max_daily_requests', 1, 5000),
+			'ai_redact_literals'      => $bool_or_current('ai_redact_literals'),
 		);
 	}
 }

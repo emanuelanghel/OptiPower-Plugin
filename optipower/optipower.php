@@ -22,6 +22,7 @@ define('OPTIPOWER_URL', plugin_dir_url(__FILE__));
 require_once OPTIPOWER_PATH . 'includes/class-optipower-settings.php';
 require_once OPTIPOWER_PATH . 'includes/class-optipower-db.php';
 require_once OPTIPOWER_PATH . 'includes/class-optipower-ai-service.php';
+require_once OPTIPOWER_PATH . 'includes/class-optipower-ai-openai.php';
 require_once OPTIPOWER_PATH . 'includes/class-optipower-recommendations.php';
 require_once OPTIPOWER_PATH . 'includes/class-optipower-monitor.php';
 require_once OPTIPOWER_PATH . 'includes/class-optipower-assets.php';

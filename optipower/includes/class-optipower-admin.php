@@ -9,6 +9,7 @@ class OptiPower_Admin {
 		add_action('admin_init', array($this, 'register_settings'));
 		add_action('admin_enqueue_scripts', array($this, 'enqueue_assets'));
 		add_action('update_option_' . OptiPower_Settings::OPTION_KEY, array($this, 'maybe_purge_cache_on_settings_update'), 10, 2);
+		add_action('admin_post_optipower_monitor_self_test', array($this, 'handle_monitor_self_test'));
 	}
 
 	public function add_menu() {
@@ -46,6 +47,7 @@ class OptiPower_Admin {
 		wp_localize_script('optipower-admin', 'OptiPowerData', array(
 			'logsEndpoint'    => esc_url_raw(rest_url('optipower/v1/logs')),
 			'summaryEndpoint' => esc_url_raw(rest_url('optipower/v1/summary')),
+			'analyzeEndpoint' => esc_url_raw(rest_url('optipower/v1/analyze')),
 			'nonce'           => wp_create_nonce('wp_rest'),
 		));
 	}
@@ -75,6 +77,31 @@ class OptiPower_Admin {
 		}
 	}
 
+	public function handle_monitor_self_test() {
+		if (! current_user_can('manage_options')) {
+			wp_die('Unauthorized', 403);
+		}
+		check_admin_referer('optipower_monitor_self_test');
+
+		global $wpdb;
+		$wpdb->query('SELECT SLEEP(0.25)');
+
+		$insight = OptiPower_Recommendations::build('SELECT SLEEP(0.25)', 250);
+		OptiPower_DB::insert_log(array(
+			'query_hash'     => hash('sha256', 'optipower_monitor_self_test'),
+			'query_sample'   => 'SELECT SLEEP(0.25) /* OptiPower self-test */',
+			'duration_ms'    => 250,
+			'request_uri'    => '/wp-admin/admin-post.php?action=optipower_monitor_self_test',
+			'source_type'    => 'plugin',
+			'source_hint'    => 'optipower',
+			'severity'       => $insight['severity'],
+			'recommendation' => $insight['recommendation'],
+		));
+
+		wp_safe_redirect(admin_url('admin.php?page=optipower&tab=monitor&self_test=1'));
+		exit;
+	}
+
 	public function render_page() {
 		$settings    = OptiPower_Settings::get_all();
 		$current_tab = isset($_GET['tab']) ? sanitize_key(wp_unslash($_GET['tab'])) : 'monitor';
@@ -83,6 +110,7 @@ class OptiPower_Admin {
 			'assets'  => 'Assets',
 			'cache'   => 'Cache',
 			'images'  => 'Images',
+			'ai'      => 'AI',
 			'general' => 'General',
 		);
 
@@ -129,6 +157,9 @@ class OptiPower_Admin {
 						case 'images':
 							$this->render_images_tab($settings);
 							break;
+						case 'ai':
+							$this->render_ai_tab($settings);
+							break;
 						case 'general':
 							$this->render_general_tab($settings);
 							break;
@@ -145,17 +176,28 @@ class OptiPower_Admin {
 	}
 
 	private function render_monitor_tab() {
+		$self_test = isset($_GET['self_test']) && $_GET['self_test'] === '1';
 		?>
 		<div class="optipower-card-head">
 			<h2>Realtime Slow Query Panel</h2>
 			<p>Auto-refreshes every 5 seconds with the latest query events.</p>
 		</div>
+		<?php if ($self_test) : ?>
+			<div class="optipower-inline-warning">
+				<p>Self-test query executed and logged.</p>
+			</div>
+		<?php endif; ?>
 		<div id="optipower-summary" class="optipower-summary"></div>
 		<div class="optipower-controls">
 			<label for="optipower-min-duration">Minimum Duration (ms)</label>
 			<input id="optipower-min-duration" type="number" min="0" value="0" />
 			<button id="optipower-refresh" class="button button-secondary">Refresh Now</button>
 		</div>
+		<form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="optipower-self-test-form">
+			<?php wp_nonce_field('optipower_monitor_self_test'); ?>
+			<input type="hidden" name="action" value="optipower_monitor_self_test" />
+			<button type="submit" class="button">Run Monitor Self-Test</button>
+		</form>
 		<table class="widefat striped optipower-table">
 			<thead>
 				<tr>
@@ -165,11 +207,13 @@ class OptiPower_Admin {
 					<th>Severity</th>
 					<th>Recommendation</th>
 					<th>Query</th>
+					<th>AI Insight</th>
+					<th>Action</th>
 					<th>Time</th>
 				</tr>
 			</thead>
 			<tbody id="optipower-rows">
-				<tr><td colspan="7">Loading...</td></tr>
+				<tr><td colspan="9">Loading...</td></tr>
 			</tbody>
 		</table>
 		<?php
@@ -244,6 +288,45 @@ class OptiPower_Admin {
 			</div>
 			<div class="optipower-actions">
 				<?php submit_button('Save Image Settings', 'primary', 'submit', false); ?>
+			</div>
+		</form>
+		<?php
+	}
+
+	private function render_ai_tab($settings) {
+		?>
+		<div class="optipower-card-head">
+			<h2>AI Analysis</h2>
+			<p>Use OpenAI to generate structured recommendations for slow queries.</p>
+		</div>
+		<form method="post" action="options.php">
+			<?php settings_fields('optipower_settings_group'); ?>
+			<div class="optipower-form-grid">
+				<?php $this->checkbox_field($settings, 'ai_enabled', 'Enable AI Analysis', 'Turns on AI-powered query diagnostics.'); ?>
+				<label class="optipower-field">
+					<span class="optipower-label">Provider</span>
+					<input type="text" name="<?php echo esc_attr(OptiPower_Settings::OPTION_KEY); ?>[ai_provider]" value="<?php echo esc_attr($settings['ai_provider']); ?>" />
+				</label>
+				<label class="optipower-field">
+					<span class="optipower-label">Model</span>
+					<input type="text" name="<?php echo esc_attr(OptiPower_Settings::OPTION_KEY); ?>[ai_model]" value="<?php echo esc_attr($settings['ai_model']); ?>" />
+				</label>
+				<label class="optipower-field">
+					<span class="optipower-label">OpenAI API Key</span>
+					<input type="password" autocomplete="off" placeholder="<?php echo ! empty($settings['ai_api_key']) ? 'Saved (leave empty to keep current key)' : 'sk-...'; ?>" name="<?php echo esc_attr(OptiPower_Settings::OPTION_KEY); ?>[ai_api_key]" value="" />
+				</label>
+				<label class="optipower-field">
+					<span class="optipower-label">AI Cache (hours)</span>
+					<input type="number" min="1" max="168" name="<?php echo esc_attr(OptiPower_Settings::OPTION_KEY); ?>[ai_cache_hours]" value="<?php echo esc_attr($settings['ai_cache_hours']); ?>" />
+				</label>
+				<label class="optipower-field">
+					<span class="optipower-label">Max AI Requests / Day</span>
+					<input type="number" min="1" max="5000" name="<?php echo esc_attr(OptiPower_Settings::OPTION_KEY); ?>[ai_max_daily_requests]" value="<?php echo esc_attr($settings['ai_max_daily_requests']); ?>" />
+				</label>
+				<?php $this->checkbox_field($settings, 'ai_redact_literals', 'Redact Query Literals', 'Redacts string and numeric literals before AI requests.'); ?>
+			</div>
+			<div class="optipower-actions">
+				<?php submit_button('Save AI Settings', 'primary', 'submit', false); ?>
 			</div>
 		</form>
 		<?php

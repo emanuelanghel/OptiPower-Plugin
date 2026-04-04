@@ -48,15 +48,22 @@ class OptiPower_Monitor {
 		$threshold_ms = (float) OptiPower_Settings::get('slow_query_threshold_ms', 100);
 		$request_uri  = isset($_SERVER['REQUEST_URI']) ? sanitize_text_field(wp_unslash($_SERVER['REQUEST_URI'])) : '';
 		$captured     = 0;
+		$failed       = 0;
 		$queries_seen = count($wpdb->queries);
+		$queries      = $wpdb->queries;
 
-		foreach ($wpdb->queries as $query_data) {
+		foreach ($queries as $query_data) {
 			if (! is_array($query_data) || ! isset($query_data[0], $query_data[1])) {
 				continue;
 			}
 
 			$query       = (string) $query_data[0];
 			$duration_ms = ((float) $query_data[1]) * 1000;
+			$table_name  = OptiPower_DB::table_name();
+
+			if (stripos($query, "insert into {$table_name}") !== false) {
+				continue;
+			}
 
 			if ($duration_ms < $threshold_ms) {
 				continue;
@@ -65,7 +72,7 @@ class OptiPower_Monitor {
 			$source_info = $this->infer_source($query_data[2] ?? '');
 			$insight     = $this->ai_service->analyze($query, $duration_ms);
 
-			OptiPower_DB::insert_log(array(
+			$ok = OptiPower_DB::insert_log(array(
 				'query_hash'     => hash('sha256', preg_replace('/\s+/', ' ', trim($query))),
 				'query_sample'   => substr($query, 0, 1500),
 				'duration_ms'    => round($duration_ms, 3),
@@ -75,13 +82,19 @@ class OptiPower_Monitor {
 				'severity'       => $insight['severity'],
 				'recommendation' => $insight['recommendation'],
 			));
-			$captured++;
+			if ($ok) {
+				$captured++;
+			} else {
+				$failed++;
+			}
 		}
 
 		$this->update_debug(array(
 			'reason'         => 'ok',
 			'queries_seen'   => $queries_seen,
 			'captured_logs'  => $captured,
+			'insert_failures'=> $failed,
+			'db_last_error'  => OptiPower_DB::get_last_error(),
 			'threshold_ms'   => $threshold_ms,
 			'table_exists'   => OptiPower_DB::table_exists() ? 1 : 0,
 		));
@@ -93,6 +106,8 @@ class OptiPower_Monitor {
 			'reason'         => 'no_data_yet',
 			'queries_seen'   => 0,
 			'captured_logs'  => 0,
+			'insert_failures'=> 0,
+			'db_last_error'  => '',
 			'threshold_ms'   => (float) OptiPower_Settings::get('slow_query_threshold_ms', 100),
 			'table_exists'   => OptiPower_DB::table_exists() ? 1 : 0,
 			'last_run'       => '',
