@@ -47,7 +47,14 @@ This checklist tracks the WordPress plugin build from MVP to installable release
 - [x] Run lint/syntax checks and basic smoke test flow.
 
 ## 8) Design Phase (Last)
-- [ ] Define visual system (typography, color tokens, spacing, states).
-- [ ] Refine admin UX for clarity and speed.
-- [ ] Polish motion/interaction details.
-- [ ] (Planned) Apply design skill workflow for UI refresh in final phase.
+- [x] Define visual system (typography, color tokens, spacing, states).
+- [x] Refine admin UX for clarity and speed.
+- [x] Polish motion/interaction details.
+- [x] Apply available frontend styling workflow for UI refresh in final phase.
+
+## 9) Optimization Modules Expansion
+- [x] Add tabbed admin sections for Monitor, Assets, Cache, Images, and General.
+- [x] Implement CSS/JS asset optimization controls (minify/defer/version stripping).
+- [x] Implement page caching module with TTL and manual purge.
+- [x] Implement browser caching headers control.
+- [x] Implement image optimization controls (lazy load, JPEG quality, WebP generation on upload).

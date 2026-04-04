@@ -1,43 +1,323 @@
+:root {
+  --op-bg-a: #f7fbff;
+  --op-bg-b: #eef9f4;
+  --op-panel: #ffffff;
+  --op-border: #d8e5ee;
+  --op-ink: #0f2a3d;
+  --op-muted: #4f6a7d;
+  --op-primary: #0d7f8c;
+  --op-primary-strong: #075864;
+  --op-success: #1f7a36;
+  --op-warn: #9a6200;
+  --op-danger: #a71d2a;
+  --op-shadow: 0 14px 36px rgba(18, 63, 94, 0.08);
+}
+
+.optipower-wrap {
+  font-family: "Avenir Next", "Segoe UI Variable Text", "Trebuchet MS", sans-serif;
+  color: var(--op-ink);
+  background: linear-gradient(135deg, var(--op-bg-a), var(--op-bg-b));
+  border-radius: 16px;
+  padding: 14px 18px 22px;
+}
+
+.optipower-hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 6px 0 14px;
+}
+
+.optipower-kicker {
+  margin: 0 0 4px;
+  color: var(--op-primary);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.optipower-wrap h1 {
+  margin: 0;
+  font-size: 34px;
+  line-height: 1.1;
+}
+
+.optipower-subtitle {
+  margin: 8px 0 0;
+  color: var(--op-muted);
+  max-width: 700px;
+}
+
+.optipower-hero-badge {
+  background: linear-gradient(145deg, #0f95a3, #0a6e78);
+  color: #fff;
+  border-radius: 999px;
+  padding: 10px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  box-shadow: 0 8px 20px rgba(10, 110, 120, 0.28);
+}
+
+.optipower-inline-warning {
+  border-left: 4px solid #dc8b00;
+  background: #fff8ea;
+  color: #5d3d00;
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin: 0 0 16px;
+}
+
 .optipower-wrap .optipower-grid {
   display: grid;
+  grid-template-columns: minmax(300px, 420px) minmax(0, 1fr);
+  gap: 16px;
+  max-width: 1320px;
+}
+
+.optipower-wrap .optipower-grid-single {
   grid-template-columns: 1fr;
-  gap: 20px;
-  max-width: 1200px;
+  max-width: 1320px;
+}
+
+.optipower-tabs {
+  margin: 0 0 14px;
+  border-bottom: 1px solid #cfe0ea;
+}
+
+.optipower-tabs .nav-tab {
+  border-radius: 10px 10px 0 0;
+  border-color: #cfe0ea;
+  background: #eef6fb;
+  color: #2b4b60;
+  font-weight: 600;
+}
+
+.optipower-tabs .nav-tab.nav-tab-active {
+  background: #ffffff;
+  border-bottom-color: #ffffff;
 }
 
 .optipower-card {
-  background: #fff;
-  border: 1px solid #dcdcde;
-  border-radius: 8px;
+  background: var(--op-panel);
+  border: 1px solid var(--op-border);
+  border-radius: 14px;
   padding: 16px;
+  box-shadow: var(--op-shadow);
+  animation: op-fade 280ms ease;
+}
+
+.optipower-card-panel {
+  min-height: 480px;
+}
+
+.optipower-card-head h2 {
+  margin: 0;
+}
+
+.optipower-card-head p {
+  margin: 6px 0 14px;
+  color: var(--op-muted);
+}
+
+.optipower-form-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.optipower-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.optipower-label {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.optipower-help {
+  color: var(--op-muted);
+  font-size: 12px;
+}
+
+.optipower-field input[type="number"] {
+  border-radius: 10px;
+  border: 1px solid #c5d8e4;
+  min-height: 38px;
+  padding: 0 10px;
+  font-size: 14px;
+}
+
+.optipower-field input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin: 2px 0 0;
+}
+
+.optipower-field-checkbox {
+  background: #f6fbff;
+  border: 1px solid #d9e8f2;
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.optipower-actions {
+  margin-top: 14px;
+}
+
+.optipower-actions .button-primary {
+  background: linear-gradient(150deg, #0f95a3, #0a6e78);
+  border-color: transparent;
+  border-radius: 10px;
+  min-height: 38px;
+  padding: 0 14px;
+  font-weight: 600;
+}
+
+.optipower-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(120px, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.optipower-summary-card {
+  border: 1px solid #d7e5ee;
+  border-radius: 10px;
+  padding: 10px;
+  background: #fbfeff;
+}
+
+.optipower-summary-card strong {
+  display: block;
+  color: var(--op-muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.optipower-summary-card span {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.optipower-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.optipower-controls label {
+  color: var(--op-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.optipower-controls input {
+  border-radius: 10px;
+  border: 1px solid #c5d8e4;
+  min-height: 36px;
+  padding: 0 10px;
+  min-width: 140px;
+}
+
+.optipower-controls .button {
+  border-radius: 10px;
+}
+
+.optipower-table {
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.optipower-table thead th {
+  background: #f1f8fc;
+  color: #2b4b60;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.optipower-table td {
+  vertical-align: top;
 }
 
 .optipower-table code {
   white-space: pre-wrap;
   font-size: 12px;
+  font-family: "Consolas", "SFMono-Regular", monospace;
+  color: #2f4050;
 }
 
 .optipower-sev {
   display: inline-block;
-  padding: 2px 8px;
+  padding: 3px 9px;
   border-radius: 999px;
   text-transform: uppercase;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
+  letter-spacing: 0.05em;
 }
 
 .optipower-sev-low {
   background: #e6f6ea;
-  color: #1f7a36;
+  color: var(--op-success);
 }
 
 .optipower-sev-medium {
   background: #fff2d8;
-  color: #9a6200;
+  color: var(--op-warn);
 }
 
 .optipower-sev-high {
   background: #fde8e8;
-  color: #a71d2a;
+  color: var(--op-danger);
+}
+
+@keyframes op-fade {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 1180px) {
+  .optipower-wrap .optipower-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .optipower-summary {
+    grid-template-columns: repeat(2, minmax(120px, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .optipower-wrap {
+    padding: 10px 12px 16px;
+  }
+
+  .optipower-wrap h1 {
+    font-size: 28px;
+  }
+
+  .optipower-hero {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .optipower-summary {
+    grid-template-columns: 1fr;
+  }
 }
 

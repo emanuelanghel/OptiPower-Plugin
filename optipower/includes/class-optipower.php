@@ -20,11 +20,18 @@ class OptiPower {
 	private function bootstrap() {
 		$admin   = new OptiPower_Admin();
 		$monitor = new OptiPower_Monitor();
+		$assets  = new OptiPower_Assets();
+		$cache   = new OptiPower_Cache();
+		$images  = new OptiPower_Images();
 		$rest    = new OptiPower_REST();
 
 		$admin->register();
 		$monitor->register();
+		$assets->register();
+		$cache->register();
+		$images->register();
 		$rest->register();
+		OptiPower_Cache::register_purge_hooks();
 
 		add_action('optipower_daily_cleanup', array($this, 'run_cleanup'));
 	}

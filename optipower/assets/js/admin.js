@@ -37,11 +37,24 @@
   function renderSummary(data) {
     const s = data && data.summary ? data.summary : {};
     const available = data && data.instrumentation_available;
+    const status = available ? "Enabled" : "Unavailable";
     summaryEl.innerHTML = `
-      <p><strong>Total logs:</strong> ${esc(s.total_logs || 0)}</p>
-      <p><strong>Avg duration:</strong> ${esc(Number(s.avg_duration_ms || 0).toFixed(2))} ms</p>
-      <p><strong>Max duration:</strong> ${esc(Number(s.max_duration_ms || 0).toFixed(2))} ms</p>
-      <p><strong>Deep query instrumentation:</strong> ${available ? "Enabled" : "Unavailable (enable SAVEQUERIES)"}</p>
+      <div class="optipower-summary-card">
+        <strong>Total Logs</strong>
+        <span>${esc(s.total_logs || 0)}</span>
+      </div>
+      <div class="optipower-summary-card">
+        <strong>Average</strong>
+        <span>${esc(Number(s.avg_duration_ms || 0).toFixed(2))} ms</span>
+      </div>
+      <div class="optipower-summary-card">
+        <strong>Peak</strong>
+        <span>${esc(Number(s.max_duration_ms || 0).toFixed(2))} ms</span>
+      </div>
+      <div class="optipower-summary-card">
+        <strong>Instrumentation</strong>
+        <span>${esc(status)}</span>
+      </div>
     `;
   }
 
@@ -69,12 +82,17 @@
   }
 
   async function refresh() {
+    refreshBtn.disabled = true;
+    refreshBtn.textContent = "Refreshing...";
     try {
       const [summary, logs] = await Promise.all([fetchSummary(), fetchLogs()]);
       renderSummary(summary);
       renderRows(logs);
     } catch (e) {
       rowsEl.innerHTML = `<tr><td colspan="7">Failed to load data.</td></tr>`;
+    } finally {
+      refreshBtn.disabled = false;
+      refreshBtn.textContent = "Refresh Now";
     }
   }
 
