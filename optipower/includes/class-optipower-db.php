@@ -5,10 +5,17 @@ if (! defined('ABSPATH')) {
 
 class OptiPower_DB {
 	private static $table_exists_cache = null;
+	private static $ai_table_exists_cache = null;
+	private static $last_error = '';
 
 	public static function table_name() {
 		global $wpdb;
 		return $wpdb->prefix . 'optipower_query_logs';
+	}
+
+	public static function ai_table_name() {
+		global $wpdb;
+		return $wpdb->prefix . 'optipower_ai_insights';
 	}
 
 	public static function create_tables() {
@@ -17,6 +24,7 @@ class OptiPower_DB {
 
 		$charset_collate = $wpdb->get_charset_collate();
 		$table           = self::table_name();
+		$ai_table        = self::ai_table_name();
 		$sql             = "CREATE TABLE {$table} (
 			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
 			query_hash varchar(64) NOT NULL,
@@ -35,7 +43,22 @@ class OptiPower_DB {
 		) {$charset_collate};";
 
 		dbDelta($sql);
+		$ai_sql = "CREATE TABLE {$ai_table} (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			query_hash varchar(64) NOT NULL,
+			provider varchar(30) NOT NULL,
+			model varchar(100) NOT NULL,
+			analysis_json longtext NOT NULL,
+			confidence decimal(4,3) NOT NULL DEFAULT 0.000,
+			created_at datetime NOT NULL,
+			expires_at datetime NOT NULL,
+			PRIMARY KEY (id),
+			UNIQUE KEY query_hash (query_hash),
+			KEY expires_at (expires_at)
+		) {$charset_collate};";
+		dbDelta($ai_sql);
 		self::$table_exists_cache = true;
+		self::$ai_table_exists_cache = true;
 	}
 
 	public static function table_exists() {
@@ -51,9 +74,21 @@ class OptiPower_DB {
 	}
 
 	public static function ensure_tables() {
-		if (! self::table_exists()) {
+		if (! self::table_exists() || ! self::ai_table_exists()) {
 			self::create_tables();
 		}
+	}
+
+	public static function ai_table_exists() {
+		if (self::$ai_table_exists_cache !== null) {
+			return self::$ai_table_exists_cache;
+		}
+
+		global $wpdb;
+		$table = self::ai_table_name();
+		$exists = $wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $table));
+		self::$ai_table_exists_cache = ($exists === $table);
+		return self::$ai_table_exists_cache;
 	}
 
 	public static function insert_log($data) {
@@ -61,7 +96,7 @@ class OptiPower_DB {
 		$table = self::table_name();
 		self::ensure_tables();
 
-		$wpdb->insert(
+		$result = $wpdb->insert(
 			$table,
 			array(
 				'query_hash'      => sanitize_text_field($data['query_hash'] ?? ''),
@@ -76,6 +111,12 @@ class OptiPower_DB {
 			),
 			array('%s', '%s', '%f', '%s', '%s', '%s', '%s', '%s', '%s')
 		);
+		self::$last_error = (string) $wpdb->last_error;
+		return $result !== false;
+	}
+
+	public static function get_last_error() {
+		return self::$last_error;
 	}
 
 	public static function get_logs($limit = 50, $min_duration = 0) {
@@ -93,6 +134,91 @@ class OptiPower_DB {
 			),
 			ARRAY_A
 		);
+	}
+
+	public static function get_latest_log_by_hash($query_hash) {
+		global $wpdb;
+		$table = self::table_name();
+		self::ensure_tables();
+
+		$query_hash = sanitize_text_field((string) $query_hash);
+		if ($query_hash === '') {
+			return null;
+		}
+
+		return $wpdb->get_row(
+			$wpdb->prepare(
+				"SELECT * FROM {$table} WHERE query_hash = %s ORDER BY id DESC LIMIT 1",
+				$query_hash
+			),
+			ARRAY_A
+		);
+	}
+
+	public static function get_ai_insight($query_hash) {
+		global $wpdb;
+		$table      = self::ai_table_name();
+		self::ensure_tables();
+		$query_hash = sanitize_text_field((string) $query_hash);
+		if ($query_hash === '') {
+			return null;
+		}
+
+		$row = $wpdb->get_row(
+			$wpdb->prepare(
+				"SELECT * FROM {$table} WHERE query_hash = %s AND expires_at > NOW() LIMIT 1",
+				$query_hash
+			),
+			ARRAY_A
+		);
+
+		if (! is_array($row)) {
+			return null;
+		}
+
+		$row['analysis'] = json_decode((string) $row['analysis_json'], true);
+		return $row;
+	}
+
+	public static function save_ai_insight($query_hash, $provider, $model, $analysis, $confidence, $cache_hours) {
+		global $wpdb;
+		$table = self::ai_table_name();
+		self::ensure_tables();
+
+		$query_hash = sanitize_text_field((string) $query_hash);
+		if ($query_hash === '') {
+			return false;
+		}
+
+		$cache_hours = max(1, min(168, absint($cache_hours)));
+		$expires_at  = gmdate('Y-m-d H:i:s', time() + ($cache_hours * HOUR_IN_SECONDS));
+		$analysis_json = wp_json_encode($analysis);
+		if (! is_string($analysis_json)) {
+			$analysis_json = '{}';
+		}
+
+		$exists_id = (int) $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT id FROM {$table} WHERE query_hash = %s LIMIT 1",
+				$query_hash
+			)
+		);
+
+		$data = array(
+			'query_hash'    => $query_hash,
+			'provider'      => sanitize_text_field((string) $provider),
+			'model'         => sanitize_text_field((string) $model),
+			'analysis_json' => $analysis_json,
+			'confidence'    => max(0, min(1, (float) $confidence)),
+			'created_at'    => current_time('mysql', true),
+			'expires_at'    => $expires_at,
+		);
+
+		if ($exists_id > 0) {
+			return false !== $wpdb->update($table, $data, array('id' => $exists_id));
+		}
+
+		return false !== $wpdb->insert($table, $data);
 	}
 
 	public static function get_summary() {
@@ -145,7 +271,10 @@ class OptiPower_DB {
 	public static function drop_tables() {
 		global $wpdb;
 		$table = self::table_name();
+		$ai_table = self::ai_table_name();
 		$wpdb->query("DROP TABLE IF EXISTS {$table}");
+		$wpdb->query("DROP TABLE IF EXISTS {$ai_table}");
 		self::$table_exists_cache = false;
+		self::$ai_table_exists_cache = false;
 	}
 }

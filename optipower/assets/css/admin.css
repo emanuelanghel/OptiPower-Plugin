@@ -214,6 +214,10 @@
   flex-wrap: wrap;
 }
 
+.optipower-self-test-form {
+  margin-bottom: 12px;
+}
+
 .optipower-controls label {
   color: var(--op-muted);
   font-size: 12px;
@@ -254,6 +258,20 @@
   font-size: 12px;
   font-family: "Consolas", "SFMono-Regular", monospace;
   color: #2f4050;
+}
+
+.optipower-ai-cell {
+  min-width: 280px;
+  max-width: 360px;
+}
+
+.optipower-ai-result p {
+  margin: 0 0 6px;
+}
+
+.optipower-ai-result ul {
+  margin: 0;
+  padding-left: 18px;
 }
 
 .optipower-sev {
