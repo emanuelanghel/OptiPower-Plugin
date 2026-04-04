@@ -4,6 +4,8 @@ if (! defined('ABSPATH')) {
 }
 
 class OptiPower_DB {
+	private static $table_exists_cache = null;
+
 	public static function table_name() {
 		global $wpdb;
 		return $wpdb->prefix . 'optipower_query_logs';
@@ -33,11 +35,31 @@ class OptiPower_DB {
 		) {$charset_collate};";
 
 		dbDelta($sql);
+		self::$table_exists_cache = true;
+	}
+
+	public static function table_exists() {
+		if (self::$table_exists_cache !== null) {
+			return self::$table_exists_cache;
+		}
+
+		global $wpdb;
+		$table   = self::table_name();
+		$exists  = $wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $table));
+		self::$table_exists_cache = ($exists === $table);
+		return self::$table_exists_cache;
+	}
+
+	public static function ensure_tables() {
+		if (! self::table_exists()) {
+			self::create_tables();
+		}
 	}
 
 	public static function insert_log($data) {
 		global $wpdb;
 		$table = self::table_name();
+		self::ensure_tables();
 
 		$wpdb->insert(
 			$table,
@@ -59,6 +81,7 @@ class OptiPower_DB {
 	public static function get_logs($limit = 50, $min_duration = 0) {
 		global $wpdb;
 		$table = self::table_name();
+		self::ensure_tables();
 		$limit = max(1, min(200, absint($limit)));
 		$min   = max(0, (float) $min_duration);
 
@@ -75,6 +98,7 @@ class OptiPower_DB {
 	public static function get_summary() {
 		global $wpdb;
 		$table = self::table_name();
+		self::ensure_tables();
 
 		$row = $wpdb->get_row(
 			"SELECT
@@ -95,6 +119,7 @@ class OptiPower_DB {
 	public static function cleanup_old_logs($retention_days, $max_rows) {
 		global $wpdb;
 		$table = self::table_name();
+		self::ensure_tables();
 		$days  = max(1, absint($retention_days));
 		$rows  = max(100, absint($max_rows));
 
@@ -121,5 +146,6 @@ class OptiPower_DB {
 		global $wpdb;
 		$table = self::table_name();
 		$wpdb->query("DROP TABLE IF EXISTS {$table}");
+		self::$table_exists_cache = false;
 	}
 }

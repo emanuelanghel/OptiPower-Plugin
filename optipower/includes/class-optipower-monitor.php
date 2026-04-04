@@ -4,6 +4,8 @@ if (! defined('ABSPATH')) {
 }
 
 class OptiPower_Monitor {
+	const DEBUG_TRANSIENT_KEY = 'optipower_monitor_debug';
+
 	private $ai_service;
 
 	public function __construct($ai_service = null) {
@@ -20,20 +22,33 @@ class OptiPower_Monitor {
 
 	public function capture_slow_queries() {
 		if (! OptiPower_Settings::get('enabled', 1)) {
+			$this->update_debug(array(
+				'reason' => 'monitor_disabled',
+			));
 			return;
 		}
 
 		if (! self::instrumentation_available()) {
+			$this->update_debug(array(
+				'reason' => 'savequeries_disabled',
+			));
 			return;
 		}
 
 		global $wpdb;
 		if (! isset($wpdb->queries) || ! is_array($wpdb->queries)) {
+			$this->update_debug(array(
+				'reason'        => 'wpdb_queries_missing',
+				'queries_seen'  => 0,
+				'captured_logs' => 0,
+			));
 			return;
 		}
 
 		$threshold_ms = (float) OptiPower_Settings::get('slow_query_threshold_ms', 100);
 		$request_uri  = isset($_SERVER['REQUEST_URI']) ? sanitize_text_field(wp_unslash($_SERVER['REQUEST_URI'])) : '';
+		$captured     = 0;
+		$queries_seen = count($wpdb->queries);
 
 		foreach ($wpdb->queries as $query_data) {
 			if (! is_array($query_data) || ! isset($query_data[0], $query_data[1])) {
@@ -60,7 +75,41 @@ class OptiPower_Monitor {
 				'severity'       => $insight['severity'],
 				'recommendation' => $insight['recommendation'],
 			));
+			$captured++;
 		}
+
+		$this->update_debug(array(
+			'reason'         => 'ok',
+			'queries_seen'   => $queries_seen,
+			'captured_logs'  => $captured,
+			'threshold_ms'   => $threshold_ms,
+			'table_exists'   => OptiPower_DB::table_exists() ? 1 : 0,
+		));
+	}
+
+	public static function get_debug_state() {
+		$debug = get_transient(self::DEBUG_TRANSIENT_KEY);
+		return is_array($debug) ? $debug : array(
+			'reason'         => 'no_data_yet',
+			'queries_seen'   => 0,
+			'captured_logs'  => 0,
+			'threshold_ms'   => (float) OptiPower_Settings::get('slow_query_threshold_ms', 100),
+			'table_exists'   => OptiPower_DB::table_exists() ? 1 : 0,
+			'last_run'       => '',
+			'savequeries'    => self::instrumentation_available() ? 1 : 0,
+			'monitor_enabled'=> OptiPower_Settings::get('enabled', 1) ? 1 : 0,
+		);
+	}
+
+	private function update_debug($extra) {
+		$base = array(
+			'last_run'        => current_time('mysql'),
+			'savequeries'     => self::instrumentation_available() ? 1 : 0,
+			'monitor_enabled' => OptiPower_Settings::get('enabled', 1) ? 1 : 0,
+			'table_exists'    => OptiPower_DB::table_exists() ? 1 : 0,
+			'threshold_ms'    => (float) OptiPower_Settings::get('slow_query_threshold_ms', 100),
+		);
+		set_transient(self::DEBUG_TRANSIENT_KEY, array_merge($base, is_array($extra) ? $extra : array()), DAY_IN_SECONDS);
 	}
 
 	private function infer_source($caller) {

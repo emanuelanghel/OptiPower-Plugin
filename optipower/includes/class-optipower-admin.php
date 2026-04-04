@@ -8,7 +8,7 @@ class OptiPower_Admin {
 		add_action('admin_menu', array($this, 'add_menu'));
 		add_action('admin_init', array($this, 'register_settings'));
 		add_action('admin_enqueue_scripts', array($this, 'enqueue_assets'));
-		add_action('admin_post_optipower_purge_cache', array($this, 'handle_purge_cache'));
+		add_action('update_option_' . OptiPower_Settings::OPTION_KEY, array($this, 'maybe_purge_cache_on_settings_update'), 10, 2);
 	}
 
 	public function add_menu() {
@@ -50,16 +50,29 @@ class OptiPower_Admin {
 		));
 	}
 
-	public function handle_purge_cache() {
-		if (! current_user_can('manage_options')) {
-			wp_die('Unauthorized', 403);
+	public function maybe_purge_cache_on_settings_update($old_value, $new_value) {
+		if (! is_admin()) {
+			return;
 		}
 
-		check_admin_referer('optipower_purge_cache');
-		OptiPower_Cache::purge_all();
+		if (! isset($_POST[OptiPower_Settings::OPTION_KEY]) || ! is_array($_POST[OptiPower_Settings::OPTION_KEY])) {
+			return;
+		}
 
-		wp_safe_redirect(admin_url('admin.php?page=optipower&tab=cache&purged=1'));
-		exit;
+		$submitted = wp_unslash($_POST[OptiPower_Settings::OPTION_KEY]);
+		$cache_keys = array(
+			'cache_enabled',
+			'cache_ttl',
+			'cache_logged_in_users',
+			'browser_cache_headers',
+		);
+
+		foreach ($cache_keys as $key) {
+			if (array_key_exists($key, $submitted)) {
+				OptiPower_Cache::purge_all();
+				break;
+			}
+		}
 	}
 
 	public function render_page() {
@@ -184,15 +197,15 @@ class OptiPower_Admin {
 	}
 
 	private function render_cache_tab($settings) {
-		$purged = isset($_GET['purged']) ? (int) $_GET['purged'] : 0;
+		$settings_updated = isset($_GET['settings-updated']) && $_GET['settings-updated'] === 'true';
 		?>
 		<div class="optipower-card-head">
 			<h2>Caching</h2>
 			<p>Enable page caching, browser caching headers, and control cache TTL.</p>
 		</div>
-		<?php if ($purged === 1) : ?>
+		<?php if ($settings_updated) : ?>
 			<div class="optipower-inline-warning">
-				<p>Cache purged successfully.</p>
+				<p>Cache settings saved. Page cache has been purged automatically.</p>
 			</div>
 		<?php endif; ?>
 		<form method="post" action="options.php">
@@ -209,11 +222,6 @@ class OptiPower_Admin {
 			<div class="optipower-actions">
 				<?php submit_button('Save Cache Settings', 'primary', 'submit', false); ?>
 			</div>
-		</form>
-		<form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
-			<?php wp_nonce_field('optipower_purge_cache'); ?>
-			<input type="hidden" name="action" value="optipower_purge_cache" />
-			<button type="submit" class="button">Purge All Page Cache</button>
 		</form>
 		<?php
 	}

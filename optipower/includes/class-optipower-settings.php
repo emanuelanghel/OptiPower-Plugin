@@ -38,26 +38,42 @@ class OptiPower_Settings {
 	}
 
 	public static function sanitize($input) {
-		$defaults = self::defaults();
+		$current  = self::get_all();
 		$input    = is_array($input) ? $input : array();
 
+		$int_or_current = static function ($key, $min, $max = null) use ($input, $current) {
+			$value = array_key_exists($key, $input) ? absint($input[$key]) : absint($current[$key] ?? 0);
+			$value = max($min, $value);
+			if ($max !== null) {
+				$value = min($max, $value);
+			}
+			return $value;
+		};
+
+		$bool_or_current = static function ($key) use ($input, $current) {
+			if (array_key_exists($key, $input)) {
+				return empty($input[$key]) ? 0 : 1;
+			}
+			return empty($current[$key]) ? 0 : 1;
+		};
+
 		return array(
-			'enabled'                 => empty($input['enabled']) ? 0 : 1,
-			'slow_query_threshold_ms' => max(10, absint($input['slow_query_threshold_ms'] ?? $defaults['slow_query_threshold_ms'])),
-			'retention_days'          => max(1, absint($input['retention_days'] ?? $defaults['retention_days'])),
-			'max_log_rows'            => max(100, absint($input['max_log_rows'] ?? $defaults['max_log_rows'])),
-			'cleanup_on_uninstall'    => empty($input['cleanup_on_uninstall']) ? 0 : 1,
-			'minify_css'              => empty($input['minify_css']) ? 0 : 1,
-			'minify_js'               => empty($input['minify_js']) ? 0 : 1,
-			'defer_js'                => empty($input['defer_js']) ? 0 : 1,
-			'remove_asset_version'    => empty($input['remove_asset_version']) ? 0 : 1,
-			'cache_enabled'           => empty($input['cache_enabled']) ? 0 : 1,
-			'cache_ttl'               => max(60, absint($input['cache_ttl'] ?? $defaults['cache_ttl'])),
-			'cache_logged_in_users'   => empty($input['cache_logged_in_users']) ? 0 : 1,
-			'browser_cache_headers'   => empty($input['browser_cache_headers']) ? 0 : 1,
-			'image_lazy_load'         => empty($input['image_lazy_load']) ? 0 : 1,
-			'image_convert_webp'      => empty($input['image_convert_webp']) ? 0 : 1,
-			'image_jpeg_quality'      => min(100, max(40, absint($input['image_jpeg_quality'] ?? $defaults['image_jpeg_quality']))),
+			'enabled'                 => $bool_or_current('enabled'),
+			'slow_query_threshold_ms' => $int_or_current('slow_query_threshold_ms', 10),
+			'retention_days'          => $int_or_current('retention_days', 1),
+			'max_log_rows'            => $int_or_current('max_log_rows', 100),
+			'cleanup_on_uninstall'    => $bool_or_current('cleanup_on_uninstall'),
+			'minify_css'              => $bool_or_current('minify_css'),
+			'minify_js'               => $bool_or_current('minify_js'),
+			'defer_js'                => $bool_or_current('defer_js'),
+			'remove_asset_version'    => $bool_or_current('remove_asset_version'),
+			'cache_enabled'           => $bool_or_current('cache_enabled'),
+			'cache_ttl'               => $int_or_current('cache_ttl', 60),
+			'cache_logged_in_users'   => $bool_or_current('cache_logged_in_users'),
+			'browser_cache_headers'   => $bool_or_current('browser_cache_headers'),
+			'image_lazy_load'         => $bool_or_current('image_lazy_load'),
+			'image_convert_webp'      => $bool_or_current('image_convert_webp'),
+			'image_jpeg_quality'      => $int_or_current('image_jpeg_quality', 40, 100),
 		);
 	}
 }

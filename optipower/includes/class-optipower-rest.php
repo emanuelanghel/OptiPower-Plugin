@@ -56,6 +56,7 @@ class OptiPower_REST {
 		return rest_ensure_response(array(
 			'summary'                   => OptiPower_DB::get_summary(),
 			'instrumentation_available' => OptiPower_Monitor::instrumentation_available(),
+			'monitor_debug'             => OptiPower_Monitor::get_debug_state(),
 		));
 	}
 }

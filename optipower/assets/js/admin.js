@@ -37,6 +37,7 @@
   function renderSummary(data) {
     const s = data && data.summary ? data.summary : {};
     const available = data && data.instrumentation_available;
+    const d = data && data.monitor_debug ? data.monitor_debug : {};
     const status = available ? "Enabled" : "Unavailable";
     summaryEl.innerHTML = `
       <div class="optipower-summary-card">
@@ -54,6 +55,22 @@
       <div class="optipower-summary-card">
         <strong>Instrumentation</strong>
         <span>${esc(status)}</span>
+      </div>
+      <div class="optipower-summary-card">
+        <strong>Queries Seen</strong>
+        <span>${esc(d.queries_seen || 0)}</span>
+      </div>
+      <div class="optipower-summary-card">
+        <strong>Captured (Last)</strong>
+        <span>${esc(d.captured_logs || 0)}</span>
+      </div>
+      <div class="optipower-summary-card">
+        <strong>Collector State</strong>
+        <span>${esc(d.reason || "n/a")}</span>
+      </div>
+      <div class="optipower-summary-card">
+        <strong>Last Run</strong>
+        <span>${esc(d.last_run || "n/a")}</span>
       </div>
     `;
   }
