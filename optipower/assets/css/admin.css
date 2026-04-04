@@ -165,6 +165,16 @@
   font-size: 14px;
 }
 
+.optipower-field select,
+.optipower-field input[type="text"],
+.optipower-field input[type="password"] {
+  border-radius: 10px;
+  border: 1px solid #c5d8e4;
+  min-height: 38px;
+  padding: 0 10px;
+  font-size: 14px;
+}
+
 .optipower-field input[type="checkbox"] {
   width: 18px;
   height: 18px;

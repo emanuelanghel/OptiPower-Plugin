@@ -14,6 +14,7 @@ class OptiPower_Admin {
 		add_action('wp_ajax_optipower_get_summary', array($this, 'ajax_get_summary'));
 		add_action('wp_ajax_optipower_ai_analyze', array($this, 'ajax_ai_analyze'));
 		add_action('admin_post_optipower_ai_test', array($this, 'handle_ai_test'));
+		add_action('admin_post_optipower_ai_refresh_models', array($this, 'handle_ai_refresh_models'));
 	}
 
 	public function add_menu() {
@@ -183,6 +184,46 @@ class OptiPower_Admin {
 				$message = 'AI connection test succeeded.';
 			} else {
 				$message = 'AI connection test failed: ' . sanitize_text_field((string) ($result['error'] ?? 'Unknown error'));
+			}
+		}
+
+		$url = add_query_arg(
+			array(
+				'page'      => 'optipower',
+				'tab'       => 'ai',
+				'ai_test'   => $status,
+				'ai_notice' => rawurlencode($message),
+			),
+			admin_url('admin.php')
+		);
+		wp_safe_redirect($url);
+		exit;
+	}
+
+	public function handle_ai_refresh_models() {
+		if (! current_user_can('manage_options')) {
+			wp_die('Unauthorized', 403);
+		}
+
+		check_admin_referer('optipower_ai_refresh_models');
+
+		$settings = OptiPower_Settings::get_all();
+		$status   = 'error';
+		$message  = 'Failed to load model list.';
+
+		if (($settings['ai_provider'] ?? '') !== 'openai') {
+			$message = 'Unsupported provider. Set provider to "openai".';
+		} elseif (empty($settings['ai_api_key'])) {
+			$message = 'Missing OpenAI API key.';
+		} else {
+			$service = new OptiPower_OpenAI_Service((string) $settings['ai_api_key'], (string) ($settings['ai_model'] ?? ''));
+			$result  = $service->list_models();
+			if (! empty($result['ok']) && ! empty($result['data']) && is_array($result['data'])) {
+				set_transient($this->get_models_cache_key((string) $settings['ai_api_key']), $result['data'], 6 * HOUR_IN_SECONDS);
+				$status  = 'success';
+				$message = 'OpenAI model list refreshed (' . count($result['data']) . ' models).';
+			} else {
+				$message = 'Model list refresh failed: ' . sanitize_text_field((string) ($result['error'] ?? 'Unknown error'));
 			}
 		}
 
@@ -391,6 +432,8 @@ class OptiPower_Admin {
 	}
 
 	private function render_ai_tab($settings) {
+		$models       = $this->get_ai_model_options($settings);
+		$currentModel = (string) ($settings['ai_model'] ?? '');
 		$notices = $this->get_ai_notices($settings);
 		if (isset($_GET['ai_test'])) {
 			$test_status = sanitize_key(wp_unslash($_GET['ai_test']));
@@ -422,7 +465,14 @@ class OptiPower_Admin {
 				</label>
 				<label class="optipower-field">
 					<span class="optipower-label">Model</span>
-					<input type="text" name="<?php echo esc_attr(OptiPower_Settings::OPTION_KEY); ?>[ai_model]" value="<?php echo esc_attr($settings['ai_model']); ?>" />
+					<select name="<?php echo esc_attr(OptiPower_Settings::OPTION_KEY); ?>[ai_model]">
+						<?php foreach ($models as $model) : ?>
+							<option value="<?php echo esc_attr($model); ?>" <?php selected($currentModel, $model); ?>><?php echo esc_html($model); ?></option>
+						<?php endforeach; ?>
+						<?php if ($currentModel !== '' && ! in_array($currentModel, $models, true)) : ?>
+							<option value="<?php echo esc_attr($currentModel); ?>" selected><?php echo esc_html($currentModel); ?> (current)</option>
+						<?php endif; ?>
+					</select>
 				</label>
 				<label class="optipower-field">
 					<span class="optipower-label">OpenAI API Key</span>
@@ -447,7 +497,48 @@ class OptiPower_Admin {
 			<input type="hidden" name="action" value="optipower_ai_test" />
 			<button type="submit" class="button">Test AI Connection</button>
 		</form>
+		<form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="optipower-self-test-form">
+			<?php wp_nonce_field('optipower_ai_refresh_models'); ?>
+			<input type="hidden" name="action" value="optipower_ai_refresh_models" />
+			<button type="submit" class="button">Refresh OpenAI Models</button>
+		</form>
 		<?php
+	}
+
+	private function get_ai_model_options($settings) {
+		$fallback = array(
+			'gpt-4.1-mini',
+			'gpt-4.1',
+			'gpt-4o-mini',
+			'gpt-4o',
+			'gpt-5-mini',
+			'gpt-5',
+		);
+
+		$provider = (string) ($settings['ai_provider'] ?? '');
+		$api_key  = (string) ($settings['ai_api_key'] ?? '');
+		if ($provider !== 'openai' || $api_key === '') {
+			return $fallback;
+		}
+
+		$cache_key = $this->get_models_cache_key($api_key);
+		$cached    = get_transient($cache_key);
+		if (is_array($cached) && ! empty($cached)) {
+			return $cached;
+		}
+
+		$service = new OptiPower_OpenAI_Service($api_key, (string) ($settings['ai_model'] ?? ''));
+		$result  = $service->list_models();
+		if (! empty($result['ok']) && ! empty($result['data']) && is_array($result['data'])) {
+			set_transient($cache_key, $result['data'], 6 * HOUR_IN_SECONDS);
+			return $result['data'];
+		}
+
+		return $fallback;
+	}
+
+	private function get_models_cache_key($api_key) {
+		return 'optipower_ai_models_' . md5((string) $api_key);
 	}
 
 	private function get_ai_notices($settings) {

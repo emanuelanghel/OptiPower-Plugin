@@ -101,6 +101,71 @@ class OptiPower_OpenAI_Service implements OptiPower_AI_Service {
 		return array('ok' => true);
 	}
 
+	public function list_models() {
+		if ($this->api_key === '') {
+			return array(
+				'ok'    => false,
+				'error' => 'Missing API key.',
+				'data'  => array(),
+			);
+		}
+
+		$http_response = wp_remote_get(
+			'https://api.openai.com/v1/models',
+			array(
+				'timeout' => 20,
+				'headers' => array(
+					'Authorization' => 'Bearer ' . $this->api_key,
+				),
+			)
+		);
+
+		if (is_wp_error($http_response)) {
+			return array(
+				'ok'    => false,
+				'error' => $http_response->get_error_message(),
+				'data'  => array(),
+			);
+		}
+
+		$code = (int) wp_remote_retrieve_response_code($http_response);
+		$body = (string) wp_remote_retrieve_body($http_response);
+
+		if ($code < 200 || $code >= 300) {
+			return array(
+				'ok'    => false,
+				'error' => 'HTTP ' . $code,
+				'data'  => array(),
+			);
+		}
+
+		$parsed = json_decode($body, true);
+		if (! is_array($parsed) || ! isset($parsed['data']) || ! is_array($parsed['data'])) {
+			return array(
+				'ok'    => false,
+				'error' => 'Invalid model list response.',
+				'data'  => array(),
+			);
+		}
+
+		$model_ids = array();
+		foreach ($parsed['data'] as $model) {
+			if (! is_array($model) || empty($model['id'])) {
+				continue;
+			}
+			$model_ids[] = sanitize_text_field((string) $model['id']);
+		}
+
+		$model_ids = array_values(array_unique(array_filter($model_ids)));
+		sort($model_ids, SORT_NATURAL | SORT_FLAG_CASE);
+
+		return array(
+			'ok'    => true,
+			'error' => '',
+			'data'  => $model_ids,
+		);
+	}
+
 	private function call_openai($query, $duration_ms, $context, $rules) {
 		$context = is_array($context) ? $context : array();
 
