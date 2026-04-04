@@ -254,15 +254,27 @@
       </div>
     `;
 
-    drawHealthDonut(healthCanvas, score, trend, Array.isArray(health.history) ? health.history.length : 0);
+    drawHealthDonut(healthCanvas, score);
   }
 
-  function drawHealthDonut(canvas, score, trend, points) {
+  function getHiDPICanvasContext(canvas) {
+    const rect = canvas.getBoundingClientRect();
+    const width = Math.max(1, Math.round(rect.width));
+    const height = Math.max(1, Math.round(rect.height));
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.round(width * dpr);
+    canvas.height = Math.round(height * dpr);
+
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return { ctx, width, height };
+  }
 
-    const width = canvas.width;
-    const height = canvas.height;
+  function drawHealthDonut(canvas, score) {
+    const prepared = getHiDPICanvasContext(canvas);
+    if (!prepared) return;
+    const { ctx, width, height } = prepared;
     ctx.clearRect(0, 0, width, height);
 
     ctx.fillStyle = "#f8fcf8";
@@ -307,15 +319,7 @@
     const sw = ctx.measureText(subtitle).width;
     ctx.fillText(subtitle, cx - sw / 2, cy + 32);
 
-    const trendText = `Trend: ${trend || "stable"} | Weekly points: ${points}`;
-    const tw2 = ctx.measureText(trendText).width;
-    ctx.fillText(trendText, cx - tw2 / 2, height - 16);
-
-    if (points === 0) {
-      const note = "First weekly snapshot will appear automatically.";
-      const nw = ctx.measureText(note).width;
-      ctx.fillText(note, cx - nw / 2, 24);
-    }
+    // Keep donut area minimal and focused for better readability.
   }
 
   function renderAIResult(targetEl, analysis, cached) {
@@ -376,5 +380,10 @@
   });
 
   refreshBtn.addEventListener("click", refresh);
+  window.addEventListener("resize", () => {
+    if (healthCanvas && healthKpisEl && healthKpisEl.children.length > 0) {
+      refresh();
+    }
+  });
   refresh();
 })();

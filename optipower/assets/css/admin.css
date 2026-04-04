@@ -330,8 +330,11 @@
 }
 
 #optipower-health-chart {
-  width: 100%;
-  max-width: 100%;
+  width: min(320px, 100%);
+  aspect-ratio: 1 / 1;
+  height: auto;
+  display: block;
+  margin: 10px auto 0;
   border: 1px solid #dce9de;
   border-radius: 8px;
   background: #fff;
