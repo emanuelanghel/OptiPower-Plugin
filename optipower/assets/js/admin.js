@@ -252,11 +252,11 @@
     ctx.clearRect(0, 0, width, height);
 
     // Background
-    ctx.fillStyle = "#fbfeff";
+    ctx.fillStyle = "#f8fcf8";
     ctx.fillRect(0, 0, width, height);
 
     // Grid
-    ctx.strokeStyle = "#e3eef4";
+    ctx.strokeStyle = "#dce9de";
     ctx.lineWidth = 1;
     for (let i = 0; i <= 4; i++) {
       const y = 20 + (i * (height - 40)) / 4;
@@ -267,7 +267,7 @@
     }
 
     if (!Array.isArray(history) || history.length === 0) {
-      ctx.fillStyle = "#4f6a7d";
+      ctx.fillStyle = "#666B6A";
       ctx.font = "14px Avenir Next, sans-serif";
       ctx.fillText("No weekly snapshots yet. First snapshot is generated automatically.", 50, height / 2);
       return;
@@ -281,7 +281,7 @@
     });
 
     // Line
-    ctx.strokeStyle = "#0d7f8c";
+    ctx.strokeStyle = "#72A276";
     ctx.lineWidth = 2;
     ctx.beginPath();
     points.forEach((p, i) => {
@@ -292,7 +292,7 @@
 
     // Points
     points.forEach((p) => {
-      ctx.fillStyle = "#0d7f8c";
+      ctx.fillStyle = "#86CD82";
       ctx.beginPath();
       ctx.arc(p.x, p.y, 3.5, 0, Math.PI * 2);
       ctx.fill();
@@ -301,7 +301,7 @@
     // Labels (first/last)
     const first = points[0];
     const last = points[points.length - 1];
-    ctx.fillStyle = "#4f6a7d";
+    ctx.fillStyle = "#666B6A";
     ctx.font = "12px Avenir Next, sans-serif";
     ctx.fillText(first.label, first.x - 20, height - 6);
     if (points.length > 1) {
