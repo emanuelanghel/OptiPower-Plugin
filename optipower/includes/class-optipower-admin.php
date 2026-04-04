@@ -682,6 +682,7 @@ class OptiPower_Admin {
 		?>
 		<label class="optipower-field optipower-field-checkbox">
 			<span class="optipower-label"><?php echo esc_html($label); ?></span>
+			<input type="hidden" name="<?php echo esc_attr(OptiPower_Settings::OPTION_KEY); ?>[<?php echo esc_attr($key); ?>]" value="0" />
 			<input type="checkbox" name="<?php echo esc_attr(OptiPower_Settings::OPTION_KEY); ?>[<?php echo esc_attr($key); ?>]" value="1" <?php checked(! empty($settings[$key])); ?> />
 			<span class="optipower-help"><?php echo esc_html($help); ?></span>
 		</label>
