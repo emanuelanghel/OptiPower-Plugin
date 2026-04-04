@@ -22,6 +22,10 @@
     return div.innerHTML;
   }
 
+  function metricClass(ok) {
+    return ok ? "optipower-kpi-good" : "optipower-kpi-bad";
+  }
+
   async function fetchSummary() {
     try {
       const res = await fetch(window.OptiPowerData.summaryEndpoint, { headers, credentials: "same-origin" });
@@ -132,44 +136,50 @@
     const available = data && data.instrumentation_available;
     const d = data && data.monitor_debug ? data.monitor_debug : {};
     const status = available ? "Enabled" : "Unavailable";
+    const avgMs = Number(s.avg_duration_ms || 0);
+    const maxMs = Number(s.max_duration_ms || 0);
+    const totalLogs = Number(s.total_logs || 0);
+    const insertFailures = Number(d.insert_failures || 0);
+    const dbError = String(d.db_last_error || "none").toLowerCase();
+    const collectorOk = String(d.reason || "") === "ok";
     summaryEl.innerHTML = `
-      <div class="optipower-summary-card">
+      <div class="optipower-summary-card ${metricClass(totalLogs <= 80)}">
         <strong>Total Logs</strong>
-        <span>${esc(s.total_logs || 0)}</span>
+        <span>${esc(totalLogs)}</span>
       </div>
-      <div class="optipower-summary-card">
+      <div class="optipower-summary-card ${metricClass(avgMs <= 120)}">
         <strong>Average</strong>
-        <span>${esc(Number(s.avg_duration_ms || 0).toFixed(2))} ms</span>
+        <span>${esc(avgMs.toFixed(2))} ms</span>
       </div>
-      <div class="optipower-summary-card">
+      <div class="optipower-summary-card ${metricClass(maxMs <= 400)}">
         <strong>Peak</strong>
-        <span>${esc(Number(s.max_duration_ms || 0).toFixed(2))} ms</span>
+        <span>${esc(maxMs.toFixed(2))} ms</span>
       </div>
-      <div class="optipower-summary-card">
+      <div class="optipower-summary-card ${metricClass(available)}">
         <strong>Instrumentation</strong>
         <span>${esc(status)}</span>
       </div>
-      <div class="optipower-summary-card">
+      <div class="optipower-summary-card ${metricClass(Number(d.queries_seen || 0) > 0)}">
         <strong>Queries Seen</strong>
         <span>${esc(d.queries_seen || 0)}</span>
       </div>
-      <div class="optipower-summary-card">
+      <div class="optipower-summary-card ${metricClass(Number(d.captured_logs || 0) > 0 || totalLogs > 0)}">
         <strong>Captured (Last)</strong>
         <span>${esc(d.captured_logs || 0)}</span>
       </div>
-      <div class="optipower-summary-card">
+      <div class="optipower-summary-card ${metricClass(collectorOk)}">
         <strong>Collector State</strong>
         <span>${esc(d.reason || "n/a")}</span>
       </div>
-      <div class="optipower-summary-card">
+      <div class="optipower-summary-card ${metricClass(!!d.last_run)}">
         <strong>Last Run</strong>
         <span>${esc(d.last_run || "n/a")}</span>
       </div>
-      <div class="optipower-summary-card">
+      <div class="optipower-summary-card ${metricClass(insertFailures === 0)}">
         <strong>Insert Failures</strong>
-        <span>${esc(d.insert_failures || 0)}</span>
+        <span>${esc(insertFailures)}</span>
       </div>
-      <div class="optipower-summary-card">
+      <div class="optipower-summary-card ${metricClass(dbError === "none" || dbError === "")}">
         <strong>DB Error</strong>
         <span>${esc(d.db_last_error || "none")}</span>
       </div>
@@ -209,41 +219,45 @@
 
     const current = health.current || {};
     const context = current.context || {};
-    const components = current.components || {};
     const trend = health.trend || "stable";
     const score = Number(current.score || 0);
+    const avgMs = Number(context.recent_avg_ms || 0);
+    const peakMs = Number(context.recent_max_ms || 0);
+    const totalLogs = Number(context.recent_total_logs || 0);
+    const p3 = Number(context.priority_p3 || 0);
+    const p4 = Number(context.priority_p4 || 0);
 
     healthKpisEl.innerHTML = `
-      <div class="optipower-health-kpi">
+      <div class="optipower-health-kpi ${metricClass(score >= 80)}">
         <strong>Current Score</strong>
         <span>${esc(score)}</span>
       </div>
-      <div class="optipower-health-kpi">
+      <div class="optipower-health-kpi ${metricClass(trend !== "down")}">
         <strong>Trend</strong>
         <span>${esc(trend)}</span>
       </div>
-      <div class="optipower-health-kpi">
+      <div class="optipower-health-kpi ${metricClass(avgMs <= 120)}">
         <strong>24h Avg</strong>
-        <span>${esc(Number(context.recent_avg_ms || 0).toFixed(2))} ms</span>
+        <span>${esc(avgMs.toFixed(2))} ms</span>
       </div>
-      <div class="optipower-health-kpi">
+      <div class="optipower-health-kpi ${metricClass(peakMs <= 400)}">
         <strong>24h Peak</strong>
-        <span>${esc(Number(context.recent_max_ms || 0).toFixed(2))} ms</span>
+        <span>${esc(peakMs.toFixed(2))} ms</span>
       </div>
-      <div class="optipower-health-kpi">
+      <div class="optipower-health-kpi ${metricClass(totalLogs <= 40)}">
         <strong>24h Slow Queries</strong>
-        <span>${esc(context.recent_total_logs || 0)}</span>
+        <span>${esc(totalLogs)}</span>
       </div>
-      <div class="optipower-health-kpi">
-        <strong>Score Drivers</strong>
-        <span>Avg -${esc(components.db_avg_penalty || 0)} | Peak -${esc(components.db_peak_penalty || 0)} | Volume -${esc(components.volume_penalty || 0)}</span>
+      <div class="optipower-health-kpi ${metricClass((p3 + p4) === 0)}">
+        <strong>Duration Priority</strong>
+        <span>P1 ${esc(context.priority_p1 || 0)} | P2 ${esc(context.priority_p2 || 0)} | P3 ${esc(context.priority_p3 || 0)} | P4 ${esc(context.priority_p4 || 0)}</span>
       </div>
     `;
 
-    drawHealthChart(healthCanvas, Array.isArray(health.history) ? health.history : []);
+    drawHealthDonut(healthCanvas, score, trend, Array.isArray(health.history) ? health.history.length : 0);
   }
 
-  function drawHealthChart(canvas, history) {
+  function drawHealthDonut(canvas, score, trend, points) {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
@@ -251,61 +265,56 @@
     const height = canvas.height;
     ctx.clearRect(0, 0, width, height);
 
-    // Background
-    ctx.fillStyle = "#fbfeff";
+    ctx.fillStyle = "#f8fcf8";
     ctx.fillRect(0, 0, width, height);
 
-    // Grid
-    ctx.strokeStyle = "#e3eef4";
-    ctx.lineWidth = 1;
-    for (let i = 0; i <= 4; i++) {
-      const y = 20 + (i * (height - 40)) / 4;
-      ctx.beginPath();
-      ctx.moveTo(40, y);
-      ctx.lineTo(width - 20, y);
-      ctx.stroke();
-    }
+    const cx = width / 2;
+    const cy = height / 2 - 6;
+    const r = Math.min(width, height) * 0.28;
+    const lineW = 20;
+    const start = -Math.PI / 2;
+    const normalized = Math.max(0, Math.min(100, Number(score || 0)));
+    const end = start + (normalized / 100) * Math.PI * 2;
 
-    if (!Array.isArray(history) || history.length === 0) {
-      ctx.fillStyle = "#4f6a7d";
-      ctx.font = "14px Avenir Next, sans-serif";
-      ctx.fillText("No weekly snapshots yet. First snapshot is generated automatically.", 50, height / 2);
-      return;
-    }
+    let color = "#86CD82";
+    if (normalized >= 85) color = "#72A276";
+    else if (normalized >= 65) color = "#86CD82";
+    else if (normalized >= 45) color = "#8b7a39";
+    else color = "#915c5f";
 
-    const points = history.map((row, index) => {
-      const score = Math.max(0, Math.min(100, Number(row.score || 0)));
-      const x = 40 + (index * (width - 60)) / Math.max(1, history.length - 1);
-      const y = 20 + ((100 - score) * (height - 40)) / 100;
-      return { x, y, score, label: String((row.created_at || "")).slice(0, 10) };
-    });
-
-    // Line
-    ctx.strokeStyle = "#0d7f8c";
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = "#dce9de";
+    ctx.lineWidth = lineW;
     ctx.beginPath();
-    points.forEach((p, i) => {
-      if (i === 0) ctx.moveTo(p.x, p.y);
-      else ctx.lineTo(p.x, p.y);
-    });
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
     ctx.stroke();
 
-    // Points
-    points.forEach((p) => {
-      ctx.fillStyle = "#0d7f8c";
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, 3.5, 0, Math.PI * 2);
-      ctx.fill();
-    });
+    ctx.strokeStyle = color;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, start, end);
+    ctx.stroke();
+    ctx.lineCap = "butt";
 
-    // Labels (first/last)
-    const first = points[0];
-    const last = points[points.length - 1];
-    ctx.fillStyle = "#4f6a7d";
-    ctx.font = "12px Avenir Next, sans-serif";
-    ctx.fillText(first.label, first.x - 20, height - 6);
-    if (points.length > 1) {
-      ctx.fillText(last.label, last.x - 20, height - 6);
+    ctx.fillStyle = "#2f3534";
+    ctx.font = "700 42px Avenir Next, sans-serif";
+    const scoreText = String(Math.round(normalized));
+    const tw = ctx.measureText(scoreText).width;
+    ctx.fillText(scoreText, cx - tw / 2, cy + 12);
+
+    ctx.fillStyle = "#666B6A";
+    ctx.font = "600 12px Avenir Next, sans-serif";
+    const subtitle = "Health Score";
+    const sw = ctx.measureText(subtitle).width;
+    ctx.fillText(subtitle, cx - sw / 2, cy + 32);
+
+    const trendText = `Trend: ${trend || "stable"} | Weekly points: ${points}`;
+    const tw2 = ctx.measureText(trendText).width;
+    ctx.fillText(trendText, cx - tw2 / 2, height - 16);
+
+    if (points === 0) {
+      const note = "First weekly snapshot will appear automatically.";
+      const nw = ctx.measureText(note).width;
+      ctx.fillText(note, cx - nw / 2, 24);
     }
   }
 
