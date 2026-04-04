@@ -233,7 +233,7 @@ class OptiPower_Admin {
 		?>
 		<div class="optipower-card-head">
 			<h2>Realtime Slow Query Panel</h2>
-			<p>Auto-refreshes every 5 seconds with the latest query events.</p>
+			<p>Manual refresh mode. Click Refresh Now whenever you want the latest query events.</p>
 		</div>
 		<?php if ($self_test) : ?>
 			<div class="optipower-inline-warning">
