@@ -21,34 +21,87 @@
   }
 
   async function fetchSummary() {
-    const res = await fetch(window.OptiPowerData.summaryEndpoint, { headers });
-    if (!res.ok) throw new Error("Failed summary");
-    return res.json();
+    try {
+      const res = await fetch(window.OptiPowerData.summaryEndpoint, { headers, credentials: "same-origin" });
+      if (!res.ok) throw new Error(`REST summary HTTP ${res.status}`);
+      return await res.json();
+    } catch (e) {
+      const params = new URLSearchParams({ action: "optipower_get_summary" });
+      const ajaxRes = await fetch(window.OptiPowerData.ajaxUrl, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8" },
+        body: params.toString(),
+      });
+      const ajaxData = await ajaxRes.json();
+      if (!ajaxData || !ajaxData.success) {
+        throw new Error((ajaxData && ajaxData.data && ajaxData.data.error) || e.message || "Failed summary");
+      }
+      return ajaxData.data;
+    }
   }
 
   async function fetchLogs() {
     const minDuration = Number(minDurationEl.value || 0);
     const url = `${window.OptiPowerData.logsEndpoint}?limit=25&min_duration=${encodeURIComponent(minDuration)}`;
-    const res = await fetch(url, { headers });
-    if (!res.ok) throw new Error("Failed logs");
-    return res.json();
+    try {
+      const res = await fetch(url, { headers, credentials: "same-origin" });
+      if (!res.ok) throw new Error(`REST logs HTTP ${res.status}`);
+      return await res.json();
+    } catch (e) {
+      const params = new URLSearchParams({
+        action: "optipower_get_logs",
+        limit: "25",
+        min_duration: String(minDuration),
+      });
+      const ajaxRes = await fetch(window.OptiPowerData.ajaxUrl, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8" },
+        body: params.toString(),
+      });
+      const ajaxData = await ajaxRes.json();
+      if (!ajaxData || !ajaxData.success) {
+        throw new Error((ajaxData && ajaxData.data && ajaxData.data.error) || e.message || "Failed logs");
+      }
+      return ajaxData.data;
+    }
   }
 
   async function analyzeWithAI(queryHash) {
-    const res = await fetch(window.OptiPowerData.analyzeEndpoint, {
-      method: "POST",
-      headers: {
-        ...headers,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ query_hash: queryHash }),
-    });
+    try {
+      const res = await fetch(window.OptiPowerData.analyzeEndpoint, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          ...headers,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ query_hash: queryHash }),
+      });
 
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      throw new Error(data && data.error ? data.error : "AI analysis failed");
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data && data.error ? data.error : `REST analyze HTTP ${res.status}`);
+      }
+      return data;
+    } catch (e) {
+      const params = new URLSearchParams({
+        action: "optipower_ai_analyze",
+        query_hash: queryHash,
+      });
+      const ajaxRes = await fetch(window.OptiPowerData.ajaxUrl, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8" },
+        body: params.toString(),
+      });
+      const ajaxData = await ajaxRes.json();
+      if (!ajaxData || !ajaxData.success) {
+        throw new Error((ajaxData && ajaxData.data && ajaxData.data.error) || e.message || "AI analysis failed");
+      }
+      return ajaxData.data;
     }
-    return data;
   }
 
   function renderSummary(data) {
@@ -170,7 +223,7 @@
       renderSummary(summary);
       renderRows(logs);
     } catch (e) {
-      rowsEl.innerHTML = `<tr><td colspan="9">Failed to load data.</td></tr>`;
+      rowsEl.innerHTML = `<tr><td colspan="9">Failed to load data: ${esc(e.message || "unknown error")}</td></tr>`;
     } finally {
       refreshBtn.disabled = false;
       refreshBtn.textContent = "Refresh Now";
@@ -188,4 +241,3 @@
   setInterval(refresh, 5000);
   refresh();
 })();
-
