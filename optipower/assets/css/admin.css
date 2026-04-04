@@ -258,6 +258,59 @@
   border-radius: 10px;
 }
 
+.optipower-health-wrap {
+  border: 1px solid #d7e5ee;
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 12px;
+  background: #f9fdff;
+}
+
+.optipower-health-head h3 {
+  margin: 0 0 4px;
+}
+
+.optipower-health-head p {
+  margin: 0 0 10px;
+  color: var(--op-muted);
+  font-size: 12px;
+}
+
+.optipower-health-kpis {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(120px, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.optipower-health-kpi {
+  background: #fff;
+  border: 1px solid #dceaf2;
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.optipower-health-kpi strong {
+  display: block;
+  color: var(--op-muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.optipower-health-kpi span {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+#optipower-health-chart {
+  width: 100%;
+  max-width: 100%;
+  border: 1px solid #e1edf3;
+  border-radius: 8px;
+  background: #fff;
+}
+
 .optipower-table {
   border-radius: 10px;
   overflow: hidden;
@@ -340,6 +393,10 @@
   .optipower-summary {
     grid-template-columns: repeat(2, minmax(120px, 1fr));
   }
+
+  .optipower-health-kpis {
+    grid-template-columns: repeat(2, minmax(120px, 1fr));
+  }
 }
 
 @media (max-width: 640px) {
@@ -357,6 +414,10 @@
   }
 
   .optipower-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .optipower-health-kpis {
     grid-template-columns: 1fr;
   }
 }

@@ -3,6 +3,8 @@
 
   const rowsEl = document.getElementById("optipower-rows");
   const summaryEl = document.getElementById("optipower-summary");
+  const healthKpisEl = document.getElementById("optipower-health-kpis");
+  const healthCanvas = document.getElementById("optipower-health-chart");
   const minDurationEl = document.getElementById("optipower-min-duration");
   const refreshBtn = document.getElementById("optipower-refresh");
 
@@ -104,6 +106,27 @@
     }
   }
 
+  async function fetchHealth() {
+    try {
+      const res = await fetch(window.OptiPowerData.healthEndpoint, { headers, credentials: "same-origin" });
+      if (!res.ok) throw new Error(`REST health HTTP ${res.status}`);
+      return await res.json();
+    } catch (e) {
+      const params = new URLSearchParams({ action: "optipower_get_health" });
+      const ajaxRes = await fetch(window.OptiPowerData.ajaxUrl, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8" },
+        body: params.toString(),
+      });
+      const ajaxData = await ajaxRes.json();
+      if (!ajaxData || !ajaxData.success) {
+        throw new Error((ajaxData && ajaxData.data && ajaxData.data.error) || e.message || "Failed health");
+      }
+      return ajaxData.data;
+    }
+  }
+
   function renderSummary(data) {
     const s = data && data.summary ? data.summary : {};
     const available = data && data.instrumentation_available;
@@ -181,6 +204,111 @@
       .join("");
   }
 
+  function renderHealth(health) {
+    if (!healthKpisEl || !healthCanvas || !health) return;
+
+    const current = health.current || {};
+    const context = current.context || {};
+    const components = current.components || {};
+    const trend = health.trend || "stable";
+    const score = Number(current.score || 0);
+
+    healthKpisEl.innerHTML = `
+      <div class="optipower-health-kpi">
+        <strong>Current Score</strong>
+        <span>${esc(score)}</span>
+      </div>
+      <div class="optipower-health-kpi">
+        <strong>Trend</strong>
+        <span>${esc(trend)}</span>
+      </div>
+      <div class="optipower-health-kpi">
+        <strong>24h Avg</strong>
+        <span>${esc(Number(context.recent_avg_ms || 0).toFixed(2))} ms</span>
+      </div>
+      <div class="optipower-health-kpi">
+        <strong>24h Peak</strong>
+        <span>${esc(Number(context.recent_max_ms || 0).toFixed(2))} ms</span>
+      </div>
+      <div class="optipower-health-kpi">
+        <strong>24h Slow Queries</strong>
+        <span>${esc(context.recent_total_logs || 0)}</span>
+      </div>
+      <div class="optipower-health-kpi">
+        <strong>Score Drivers</strong>
+        <span>Avg -${esc(components.db_avg_penalty || 0)} | Peak -${esc(components.db_peak_penalty || 0)} | Volume -${esc(components.volume_penalty || 0)}</span>
+      </div>
+    `;
+
+    drawHealthChart(healthCanvas, Array.isArray(health.history) ? health.history : []);
+  }
+
+  function drawHealthChart(canvas, history) {
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const width = canvas.width;
+    const height = canvas.height;
+    ctx.clearRect(0, 0, width, height);
+
+    // Background
+    ctx.fillStyle = "#fbfeff";
+    ctx.fillRect(0, 0, width, height);
+
+    // Grid
+    ctx.strokeStyle = "#e3eef4";
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= 4; i++) {
+      const y = 20 + (i * (height - 40)) / 4;
+      ctx.beginPath();
+      ctx.moveTo(40, y);
+      ctx.lineTo(width - 20, y);
+      ctx.stroke();
+    }
+
+    if (!Array.isArray(history) || history.length === 0) {
+      ctx.fillStyle = "#4f6a7d";
+      ctx.font = "14px Avenir Next, sans-serif";
+      ctx.fillText("No weekly snapshots yet. First snapshot is generated automatically.", 50, height / 2);
+      return;
+    }
+
+    const points = history.map((row, index) => {
+      const score = Math.max(0, Math.min(100, Number(row.score || 0)));
+      const x = 40 + (index * (width - 60)) / Math.max(1, history.length - 1);
+      const y = 20 + ((100 - score) * (height - 40)) / 100;
+      return { x, y, score, label: String((row.created_at || "")).slice(0, 10) };
+    });
+
+    // Line
+    ctx.strokeStyle = "#0d7f8c";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    points.forEach((p, i) => {
+      if (i === 0) ctx.moveTo(p.x, p.y);
+      else ctx.lineTo(p.x, p.y);
+    });
+    ctx.stroke();
+
+    // Points
+    points.forEach((p) => {
+      ctx.fillStyle = "#0d7f8c";
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    // Labels (first/last)
+    const first = points[0];
+    const last = points[points.length - 1];
+    ctx.fillStyle = "#4f6a7d";
+    ctx.font = "12px Avenir Next, sans-serif";
+    ctx.fillText(first.label, first.x - 20, height - 6);
+    if (points.length > 1) {
+      ctx.fillText(last.label, last.x - 20, height - 6);
+    }
+  }
+
   function renderAIResult(targetEl, analysis, cached) {
     const fixes = Array.isArray(analysis && analysis.fixes) ? analysis.fixes.slice(0, 2) : [];
     const fixesHtml = fixes
@@ -219,9 +347,10 @@
     refreshBtn.disabled = true;
     refreshBtn.textContent = "Refreshing...";
     try {
-      const [summary, logs] = await Promise.all([fetchSummary(), fetchLogs()]);
+      const [summary, logs, health] = await Promise.all([fetchSummary(), fetchLogs(), fetchHealth()]);
       renderSummary(summary);
       renderRows(logs);
+      renderHealth(health);
     } catch (e) {
       rowsEl.innerHTML = `<tr><td colspan="9">Failed to load data: ${esc(e.message || "unknown error")}</td></tr>`;
     } finally {
