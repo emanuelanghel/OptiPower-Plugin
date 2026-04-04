@@ -10,6 +10,9 @@ class OptiPower_Admin {
 		add_action('admin_enqueue_scripts', array($this, 'enqueue_assets'));
 		add_action('update_option_' . OptiPower_Settings::OPTION_KEY, array($this, 'maybe_purge_cache_on_settings_update'), 10, 2);
 		add_action('admin_post_optipower_monitor_self_test', array($this, 'handle_monitor_self_test'));
+		add_action('wp_ajax_optipower_get_logs', array($this, 'ajax_get_logs'));
+		add_action('wp_ajax_optipower_get_summary', array($this, 'ajax_get_summary'));
+		add_action('wp_ajax_optipower_ai_analyze', array($this, 'ajax_ai_analyze'));
 	}
 
 	public function add_menu() {
@@ -48,6 +51,7 @@ class OptiPower_Admin {
 			'logsEndpoint'    => esc_url_raw(rest_url('optipower/v1/logs')),
 			'summaryEndpoint' => esc_url_raw(rest_url('optipower/v1/summary')),
 			'analyzeEndpoint' => esc_url_raw(rest_url('optipower/v1/analyze')),
+			'ajaxUrl'         => esc_url_raw(admin_url('admin-ajax.php')),
 			'nonce'           => wp_create_nonce('wp_rest'),
 		));
 	}
@@ -100,6 +104,55 @@ class OptiPower_Admin {
 
 		wp_safe_redirect(admin_url('admin.php?page=optipower&tab=monitor&self_test=1'));
 		exit;
+	}
+
+	public function ajax_get_logs() {
+		if (! current_user_can('manage_options')) {
+			wp_send_json_error(array('error' => 'Unauthorized'), 403);
+		}
+
+		$limit = isset($_REQUEST['limit']) ? absint($_REQUEST['limit']) : 25;
+		$min   = isset($_REQUEST['min_duration']) ? (float) $_REQUEST['min_duration'] : 0;
+		wp_send_json_success(OptiPower_DB::get_logs($limit, $min));
+	}
+
+	public function ajax_get_summary() {
+		if (! current_user_can('manage_options')) {
+			wp_send_json_error(array('error' => 'Unauthorized'), 403);
+		}
+
+		wp_send_json_success(array(
+			'summary'                   => OptiPower_DB::get_summary(),
+			'instrumentation_available' => OptiPower_Monitor::instrumentation_available(),
+			'monitor_debug'             => OptiPower_Monitor::get_debug_state(),
+		));
+	}
+
+	public function ajax_ai_analyze() {
+		if (! current_user_can('manage_options')) {
+			wp_send_json_error(array('error' => 'Unauthorized'), 403);
+		}
+
+		$query_hash = isset($_REQUEST['query_hash']) ? sanitize_text_field(wp_unslash($_REQUEST['query_hash'])) : '';
+		if ($query_hash === '') {
+			wp_send_json_error(array('error' => 'Missing query_hash'), 400);
+		}
+
+		$rest = new OptiPower_REST();
+		$request = new WP_REST_Request('POST', '/optipower/v1/analyze');
+		$request->set_param('query_hash', $query_hash);
+		$response = $rest->analyze_query($request);
+
+		if ($response instanceof WP_REST_Response) {
+			$status = $response->get_status();
+			$data   = $response->get_data();
+			if ($status >= 200 && $status < 300) {
+				wp_send_json_success($data);
+			}
+			wp_send_json_error($data, $status);
+		}
+
+		wp_send_json_error(array('error' => 'Unknown AI analyze response'), 500);
 	}
 
 	public function render_page() {
