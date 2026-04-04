@@ -71,6 +71,18 @@
   margin: 0 0 16px;
 }
 
+.optipower-inline-error {
+  border-left-color: #d63638;
+  background: #fdeaea;
+  color: #6c1b1b;
+}
+
+.optipower-inline-success {
+  border-left-color: #2e9f5b;
+  background: #e9f8ef;
+  color: #1f5f37;
+}
+
 .optipower-wrap .optipower-grid {
   display: grid;
   grid-template-columns: minmax(300px, 420px) minmax(0, 1fr);
