@@ -324,6 +324,42 @@ class OptiPower_DB {
 		);
 	}
 
+	public static function get_recent_metrics($hours = 24) {
+		global $wpdb;
+		$table = self::table_name();
+		self::ensure_tables();
+		$hours = max(1, min(720, absint($hours)));
+
+		$row = $wpdb->get_row(
+			$wpdb->prepare(
+				"SELECT
+					COUNT(*) AS total_logs,
+					COALESCE(AVG(duration_ms), 0) AS avg_duration_ms,
+					COALESCE(MAX(duration_ms), 0) AS max_duration_ms,
+					COALESCE(SUM(duration_ms), 0) AS total_duration_ms,
+					SUM(CASE WHEN duration_ms >= 120 AND duration_ms < 300 THEN 1 ELSE 0 END) AS p1_count,
+					SUM(CASE WHEN duration_ms >= 300 AND duration_ms < 700 THEN 1 ELSE 0 END) AS p2_count,
+					SUM(CASE WHEN duration_ms >= 700 AND duration_ms < 1500 THEN 1 ELSE 0 END) AS p3_count,
+					SUM(CASE WHEN duration_ms >= 1500 THEN 1 ELSE 0 END) AS p4_count
+				FROM {$table}
+				WHERE created_at >= DATE_SUB(NOW(), INTERVAL %d HOUR)",
+				$hours
+			),
+			ARRAY_A
+		);
+
+		return is_array($row) ? $row : array(
+			'total_logs'       => 0,
+			'avg_duration_ms'  => 0,
+			'max_duration_ms'  => 0,
+			'total_duration_ms'=> 0,
+			'p1_count'         => 0,
+			'p2_count'         => 0,
+			'p3_count'         => 0,
+			'p4_count'         => 0,
+		);
+	}
+
 	public static function save_health_snapshot($score, $components, $context) {
 		global $wpdb;
 		$table = self::health_table_name();

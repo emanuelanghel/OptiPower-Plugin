@@ -218,6 +218,16 @@
   background: #fbfeff;
 }
 
+.optipower-summary-card.optipower-kpi-good {
+  border-color: #c9e5ce;
+  background: #f1fbf4;
+}
+
+.optipower-summary-card.optipower-kpi-bad {
+  border-color: #efc9cc;
+  background: #fff3f4;
+}
+
 .optipower-summary-card strong {
   display: block;
   color: var(--op-muted);
@@ -294,6 +304,16 @@
   border: 1px solid #d8e6da;
   border-radius: 8px;
   padding: 8px;
+}
+
+.optipower-health-kpi.optipower-kpi-good {
+  border-color: #c9e5ce;
+  background: #f1fbf4;
+}
+
+.optipower-health-kpi.optipower-kpi-bad {
+  border-color: #efc9cc;
+  background: #fff3f4;
 }
 
 .optipower-health-kpi strong {
