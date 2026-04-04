@@ -1,22 +1,25 @@
 :root {
-  --op-bg-a: #f7fbff;
-  --op-bg-b: #eef9f4;
+  --op-bg-a: #f3fbf6;
+  --op-bg-b: #eaf6ee;
   --op-panel: #ffffff;
-  --op-border: #d8e5ee;
-  --op-ink: #0f2a3d;
-  --op-muted: #4f6a7d;
-  --op-primary: #0d7f8c;
-  --op-primary-strong: #075864;
-  --op-success: #1f7a36;
-  --op-warn: #9a6200;
-  --op-danger: #a71d2a;
-  --op-shadow: 0 14px 36px rgba(18, 63, 94, 0.08);
+  --op-border: #d2e4d8;
+  --op-ink: #2f3534;
+  --op-muted: #666b6a;
+  --op-primary: #72a276;
+  --op-primary-strong: #5c8960;
+  --op-accent: #8ae9c1;
+  --op-secondary: #86cd82;
+  --op-accent-soft: #a0eec0;
+  --op-success: #528f57;
+  --op-warn: #8b7a39;
+  --op-danger: #915c5f;
+  --op-shadow: 0 12px 30px rgba(59, 92, 63, 0.1);
 }
 
 .optipower-wrap {
   font-family: "Avenir Next", "Segoe UI Variable Text", "Trebuchet MS", sans-serif;
   color: var(--op-ink);
-  background: linear-gradient(135deg, var(--op-bg-a), var(--op-bg-b));
+  background: linear-gradient(140deg, var(--op-bg-a), var(--op-bg-b));
   border-radius: 16px;
   padding: 14px 18px 22px;
 }
@@ -51,21 +54,21 @@
 }
 
 .optipower-hero-badge {
-  background: linear-gradient(145deg, #0f95a3, #0a6e78);
-  color: #fff;
+  background: linear-gradient(145deg, var(--op-accent), var(--op-secondary, #86cd82));
+  color: #264438;
   border-radius: 999px;
   padding: 10px 14px;
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  box-shadow: 0 8px 20px rgba(10, 110, 120, 0.28);
+  box-shadow: 0 8px 20px rgba(114, 162, 118, 0.25);
 }
 
 .optipower-inline-warning {
-  border-left: 4px solid #dc8b00;
-  background: #fff8ea;
-  color: #5d3d00;
+  border-left: 4px solid #86cd82;
+  background: #f1fbf4;
+  color: #355437;
   border-radius: 10px;
   padding: 10px 12px;
   margin: 0 0 16px;
@@ -97,14 +100,14 @@
 
 .optipower-tabs {
   margin: 0 0 14px;
-  border-bottom: 1px solid #cfe0ea;
+  border-bottom: 1px solid #cddfcf;
 }
 
 .optipower-tabs .nav-tab {
   border-radius: 10px 10px 0 0;
-  border-color: #cfe0ea;
-  background: #eef6fb;
-  color: #2b4b60;
+  border-color: #cddfcf;
+  background: #eef7f1;
+  color: #3a5a43;
   font-weight: 600;
 }
 
@@ -159,7 +162,7 @@
 
 .optipower-field input[type="number"] {
   border-radius: 10px;
-  border: 1px solid #c5d8e4;
+  border: 1px solid #c7ddca;
   min-height: 38px;
   padding: 0 10px;
   font-size: 14px;
@@ -169,7 +172,7 @@
 .optipower-field input[type="text"],
 .optipower-field input[type="password"] {
   border-radius: 10px;
-  border: 1px solid #c5d8e4;
+  border: 1px solid #c7ddca;
   min-height: 38px;
   padding: 0 10px;
   font-size: 14px;
@@ -182,8 +185,8 @@
 }
 
 .optipower-field-checkbox {
-  background: #f6fbff;
-  border: 1px solid #d9e8f2;
+  background: #f5fbf6;
+  border: 1px solid #d7e7db;
   border-radius: 10px;
   padding: 10px;
 }
@@ -193,7 +196,7 @@
 }
 
 .optipower-actions .button-primary {
-  background: linear-gradient(150deg, #0f95a3, #0a6e78);
+  background: linear-gradient(150deg, var(--op-primary), #86cd82);
   border-color: transparent;
   border-radius: 10px;
   min-height: 38px;
@@ -209,7 +212,7 @@
 }
 
 .optipower-summary-card {
-  border: 1px solid #d7e5ee;
+  border: 1px solid #d7e7db;
   border-radius: 10px;
   padding: 10px;
   background: #fbfeff;
@@ -266,14 +269,17 @@
 
 .optipower-controls .button {
   border-radius: 10px;
+  border-color: #b8d4bd;
+  color: #355437;
+  background: #f5fbf6;
 }
 
 .optipower-health-wrap {
-  border: 1px solid #d7e5ee;
+  border: 1px solid #d7e7db;
   border-radius: 10px;
   padding: 12px;
   margin-bottom: 12px;
-  background: #f9fdff;
+  background: #f8fcf8;
 }
 
 .optipower-health-head h3 {
@@ -295,7 +301,7 @@
 
 .optipower-health-kpi {
   background: #fff;
-  border: 1px solid #dceaf2;
+  border: 1px solid #d8e6da;
   border-radius: 8px;
   padding: 8px;
 }
@@ -326,7 +332,7 @@
 #optipower-health-chart {
   width: 100%;
   max-width: 100%;
-  border: 1px solid #e1edf3;
+  border: 1px solid #dce9de;
   border-radius: 8px;
   background: #fff;
 }
@@ -337,8 +343,8 @@
 }
 
 .optipower-table thead th {
-  background: #f1f8fc;
-  color: #2b4b60;
+  background: #edf7ef;
+  color: #3a5a43;
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -380,18 +386,18 @@
 }
 
 .optipower-sev-low {
-  background: #e6f6ea;
-  color: var(--op-success);
+  background: #eaf8ed;
+  color: #3f7b44;
 }
 
 .optipower-sev-medium {
-  background: #fff2d8;
-  color: var(--op-warn);
+  background: #f4f0de;
+  color: #7a6f3b;
 }
 
 .optipower-sev-high {
-  background: #fde8e8;
-  color: var(--op-danger);
+  background: #f7e9ea;
+  color: #8d575b;
 }
 
 @keyframes op-fade {
