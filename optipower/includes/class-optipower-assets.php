@@ -24,6 +24,10 @@ class OptiPower_Assets {
 	}
 
 	public function optimize_script_src($src, $handle) {
+		if ($this->is_excluded_script($handle, $src)) {
+			return $this->maybe_strip_ver($src);
+		}
+
 		if (! OptiPower_Settings::get('minify_js', 1)) {
 			return $this->maybe_strip_ver($src);
 		}
@@ -42,7 +46,52 @@ class OptiPower_Assets {
 			return $tag;
 		}
 
+		if ($this->is_excluded_script($handle, $src)) {
+			return $tag;
+		}
+
 		return str_replace('<script ', '<script defer ', $tag);
+	}
+
+	private function is_excluded_script($handle, $src) {
+		$tokens = $this->get_js_exclusions();
+		if (empty($tokens)) {
+			return false;
+		}
+
+		$haystacks = array(
+			strtolower((string) $handle),
+			strtolower((string) $src),
+		);
+
+		foreach ($tokens as $token) {
+			foreach ($haystacks as $haystack) {
+				if ($haystack !== '' && strpos($haystack, $token) !== false) {
+					return true;
+				}
+			}
+		}
+
+		return false;
+	}
+
+	private function get_js_exclusions() {
+		$defaults = array(
+			'translatepress',
+			'trp-language-switcher',
+			'trp-frontend',
+		);
+
+		$raw = (string) OptiPower_Settings::get('js_exclusions', '');
+		$parts = preg_split('/[\r\n,]+/', $raw);
+		$parts = is_array($parts) ? $parts : array();
+		$parts = array_filter(array_map(static function ($value) {
+			return sanitize_key(trim((string) $value));
+		}, $parts));
+
+		$merged = array_merge($defaults, $parts);
+		$merged = array_values(array_unique(array_filter($merged)));
+		return $merged;
 	}
 
 	private function maybe_strip_ver($src) {

@@ -426,6 +426,11 @@ class OptiPower_Admin {
 				<?php $this->checkbox_field($settings, 'minify_css', 'Minify CSS', 'Use existing .min.css when available, or generate optimized cached CSS.'); ?>
 				<?php $this->checkbox_field($settings, 'minify_js', 'Minify JS', 'Use existing .min.js when available, or generate optimized cached JS.'); ?>
 				<?php $this->checkbox_field($settings, 'defer_js', 'Defer JavaScript', 'Adds defer attribute to most scripts except critical WordPress handles.'); ?>
+				<label class="optipower-field">
+					<span class="optipower-label">JS Exclusions (handles or URL fragments)</span>
+					<textarea rows="3" name="<?php echo esc_attr(OptiPower_Settings::OPTION_KEY); ?>[js_exclusions]"><?php echo esc_textarea((string) ($settings['js_exclusions'] ?? '')); ?></textarea>
+					<span class="optipower-help">Comma/newline-separated list. Default includes TranslatePress entries to keep its floating switcher working.</span>
+				</label>
 				<?php $this->checkbox_field($settings, 'remove_asset_version', 'Remove Asset Version Query', 'Removes ?ver= from script/style URLs.'); ?>
 			</div>
 			<div class="optipower-actions">

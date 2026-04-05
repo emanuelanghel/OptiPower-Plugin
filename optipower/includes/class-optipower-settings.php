@@ -16,6 +16,7 @@ class OptiPower_Settings {
 			'minify_css'              => 1,
 			'minify_js'               => 1,
 			'defer_js'                => 1,
+			'js_exclusions'           => 'translatepress,trp-language-switcher,trp-frontend',
 			'remove_asset_version'    => 0,
 			'cache_enabled'           => 0,
 			'cache_ttl'               => 300,
@@ -71,6 +72,21 @@ class OptiPower_Settings {
 			return sanitize_text_field((string) ($current[$key] ?? ''));
 		};
 
+		$csv_or_current = static function ($key) use ($input, $current) {
+			$value = array_key_exists($key, $input) ? (string) $input[$key] : (string) ($current[$key] ?? '');
+			$parts = preg_split('/[\r\n,]+/', $value);
+			$parts = is_array($parts) ? $parts : array();
+			$clean = array();
+			foreach ($parts as $part) {
+				$item = sanitize_key(trim((string) $part));
+				if ($item !== '') {
+					$clean[] = $item;
+				}
+			}
+			$clean = array_values(array_unique($clean));
+			return implode(',', $clean);
+		};
+
 		$secret_or_current = static function ($key) use ($input, $current) {
 			if (array_key_exists($key, $input)) {
 				$raw = trim((string) $input[$key]);
@@ -90,6 +106,7 @@ class OptiPower_Settings {
 			'minify_css'              => $bool_or_current('minify_css'),
 			'minify_js'               => $bool_or_current('minify_js'),
 			'defer_js'                => $bool_or_current('defer_js'),
+			'js_exclusions'           => $csv_or_current('js_exclusions'),
 			'remove_asset_version'    => $bool_or_current('remove_asset_version'),
 			'cache_enabled'           => $bool_or_current('cache_enabled'),
 			'cache_ttl'               => $int_or_current('cache_ttl', 60),
