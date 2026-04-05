@@ -16,12 +16,17 @@ class OptiPower_Settings {
 			'minify_css'              => 1,
 			'minify_js'               => 1,
 			'defer_js'                => 1,
-			'js_exclusions'           => 'translatepress,trp-language-switcher,trp-frontend',
+			'compatibility_profile'   => 'none',
+			'css_exclusions'          => '',
+			'js_exclusions'           => '',
 			'remove_asset_version'    => 0,
 			'cache_enabled'           => 0,
 			'cache_ttl'               => 300,
 			'cache_logged_in_users'   => 0,
 			'browser_cache_headers'   => 1,
+			'cache_uri_exclusions'    => '/wp-admin,/wp-login.php,/cart,/checkout,/my-account',
+			'cache_cookie_exclusions' => 'wordpress_logged_in_,comment_author_,woocommerce_items_in_cart,woocommerce_cart_hash,wp_woocommerce_session_,trp_language',
+			'cache_query_exclusions'  => 'preview,customize_changeset_uuid,trp-edit-translation,lang,add-to-cart,wc-ajax',
 			'image_lazy_load'         => 1,
 			'image_convert_webp'      => 0,
 			'image_jpeg_quality'      => 82,
@@ -78,7 +83,9 @@ class OptiPower_Settings {
 			$parts = is_array($parts) ? $parts : array();
 			$clean = array();
 			foreach ($parts as $part) {
-				$item = sanitize_key(trim((string) $part));
+				$item = trim((string) $part);
+				$item = strtolower($item);
+				$item = preg_replace('/[^a-z0-9_\-\.\/\?=]+/', '', $item);
 				if ($item !== '') {
 					$clean[] = $item;
 				}
@@ -106,12 +113,17 @@ class OptiPower_Settings {
 			'minify_css'              => $bool_or_current('minify_css'),
 			'minify_js'               => $bool_or_current('minify_js'),
 			'defer_js'                => $bool_or_current('defer_js'),
+			'compatibility_profile'   => in_array($string_or_current('compatibility_profile'), array('none', 'translatepress', 'woocommerce'), true) ? $string_or_current('compatibility_profile') : 'none',
+			'css_exclusions'          => $csv_or_current('css_exclusions'),
 			'js_exclusions'           => $csv_or_current('js_exclusions'),
 			'remove_asset_version'    => $bool_or_current('remove_asset_version'),
 			'cache_enabled'           => $bool_or_current('cache_enabled'),
 			'cache_ttl'               => $int_or_current('cache_ttl', 60),
 			'cache_logged_in_users'   => $bool_or_current('cache_logged_in_users'),
 			'browser_cache_headers'   => $bool_or_current('browser_cache_headers'),
+			'cache_uri_exclusions'    => $csv_or_current('cache_uri_exclusions'),
+			'cache_cookie_exclusions' => $csv_or_current('cache_cookie_exclusions'),
+			'cache_query_exclusions'  => $csv_or_current('cache_query_exclusions'),
 			'image_lazy_load'         => $bool_or_current('image_lazy_load'),
 			'image_convert_webp'      => $bool_or_current('image_convert_webp'),
 			'image_jpeg_quality'      => $int_or_current('image_jpeg_quality', 40, 100),

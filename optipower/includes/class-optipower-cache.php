@@ -90,6 +90,18 @@ class OptiPower_Cache {
 			return false;
 		}
 
+		if ($this->request_matches_uri_exclusions()) {
+			return false;
+		}
+
+		if ($this->request_matches_cookie_exclusions()) {
+			return false;
+		}
+
+		if ($this->request_matches_query_exclusions()) {
+			return false;
+		}
+
 		return true;
 	}
 
@@ -115,6 +127,119 @@ class OptiPower_Cache {
 				unlink($file);
 			}
 		}
+	}
+
+	private function request_matches_uri_exclusions() {
+		$request_uri = isset($_SERVER['REQUEST_URI']) ? strtolower((string) wp_unslash($_SERVER['REQUEST_URI'])) : '/';
+		foreach ($this->get_uri_exclusions() as $token) {
+			if ($token !== '' && strpos($request_uri, $token) !== false) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private function request_matches_cookie_exclusions() {
+		if (empty($_COOKIE) || ! is_array($_COOKIE)) {
+			return false;
+		}
+
+		$cookie_names = array_map(static function ($name) {
+			return strtolower((string) $name);
+		}, array_keys($_COOKIE));
+
+		foreach ($this->get_cookie_exclusions() as $token) {
+			foreach ($cookie_names as $cookie_name) {
+				if ($token !== '' && strpos($cookie_name, $token) !== false) {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	private function request_matches_query_exclusions() {
+		if (empty($_GET) || ! is_array($_GET)) {
+			return false;
+		}
+
+		$query_keys = array_map(static function ($key) {
+			return strtolower((string) $key);
+		}, array_keys($_GET));
+
+		foreach ($this->get_query_exclusions() as $token) {
+			foreach ($query_keys as $query_key) {
+				if ($token !== '' && $query_key === $token) {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	private function get_uri_exclusions() {
+		$defaults = $this->get_profile_uri_exclusions();
+		$raw = (string) OptiPower_Settings::get('cache_uri_exclusions', '');
+		$user = $this->parse_csv_tokens($raw);
+		return array_values(array_unique(array_merge($defaults, $user)));
+	}
+
+	private function get_cookie_exclusions() {
+		$defaults = $this->get_profile_cookie_exclusions();
+		$raw = (string) OptiPower_Settings::get('cache_cookie_exclusions', '');
+		$user = $this->parse_csv_tokens($raw);
+		return array_values(array_unique(array_merge($defaults, $user)));
+	}
+
+	private function get_query_exclusions() {
+		$defaults = $this->get_profile_query_exclusions();
+		$raw = (string) OptiPower_Settings::get('cache_query_exclusions', '');
+		$user = $this->parse_csv_tokens($raw);
+		return array_values(array_unique(array_merge($defaults, $user)));
+	}
+
+	private function get_profile_uri_exclusions() {
+		$profile = (string) OptiPower_Settings::get('compatibility_profile', 'none');
+		if ($profile === 'woocommerce') {
+			return array('/cart', '/checkout', '/my-account');
+		}
+		return array();
+	}
+
+	private function get_profile_cookie_exclusions() {
+		$profile = (string) OptiPower_Settings::get('compatibility_profile', 'none');
+		if ($profile === 'translatepress') {
+			return array('trp_language');
+		}
+		if ($profile === 'woocommerce') {
+			return array('woocommerce_items_in_cart', 'woocommerce_cart_hash', 'wp_woocommerce_session_');
+		}
+		return array();
+	}
+
+	private function get_profile_query_exclusions() {
+		$profile = (string) OptiPower_Settings::get('compatibility_profile', 'none');
+		if ($profile === 'translatepress') {
+			return array('trp-edit-translation', 'lang');
+		}
+		if ($profile === 'woocommerce') {
+			return array('add-to-cart', 'wc-ajax');
+		}
+		return array();
+	}
+
+	private function parse_csv_tokens($value) {
+		$parts = preg_split('/[\r\n,]+/', (string) $value);
+		$parts = is_array($parts) ? $parts : array();
+		$tokens = array();
+		foreach ($parts as $part) {
+			$item = strtolower(trim((string) $part));
+			$item = preg_replace('/[^a-z0-9_\-\.\/\?=]+/', '', $item);
+			if ($item !== '') {
+				$tokens[] = $item;
+			}
+		}
+		return array_values(array_unique($tokens));
 	}
 }
 

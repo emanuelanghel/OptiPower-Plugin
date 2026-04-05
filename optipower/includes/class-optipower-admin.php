@@ -415,6 +415,7 @@ class OptiPower_Admin {
 	}
 
 	private function render_assets_tab($settings) {
+		$profile = (string) ($settings['compatibility_profile'] ?? 'none');
 		?>
 		<div class="optipower-card-head">
 			<h2>Assets Optimization</h2>
@@ -423,9 +424,23 @@ class OptiPower_Admin {
 		<form id="optipower-ai-settings-form" method="post" action="options.php">
 			<?php settings_fields('optipower_settings_group'); ?>
 			<div class="optipower-form-grid">
+				<label class="optipower-field">
+					<span class="optipower-label">Compatibility Profile</span>
+					<select name="<?php echo esc_attr(OptiPower_Settings::OPTION_KEY); ?>[compatibility_profile]">
+						<option value="none" <?php selected($profile, 'none'); ?>>None</option>
+						<option value="translatepress" <?php selected($profile, 'translatepress'); ?>>TranslatePress</option>
+						<option value="woocommerce" <?php selected($profile, 'woocommerce'); ?>>WooCommerce</option>
+					</select>
+					<span class="optipower-help">Loads safe defaults for exclusions and cache behavior.</span>
+				</label>
 				<?php $this->checkbox_field($settings, 'minify_css', 'Minify CSS', 'Use existing .min.css when available, or generate optimized cached CSS.'); ?>
 				<?php $this->checkbox_field($settings, 'minify_js', 'Minify JS', 'Use existing .min.js when available, or generate optimized cached JS.'); ?>
 				<?php $this->checkbox_field($settings, 'defer_js', 'Defer JavaScript', 'Adds defer attribute to most scripts except critical WordPress handles.'); ?>
+				<label class="optipower-field">
+					<span class="optipower-label">CSS Exclusions (handles or URL fragments)</span>
+					<textarea rows="3" name="<?php echo esc_attr(OptiPower_Settings::OPTION_KEY); ?>[css_exclusions]"><?php echo esc_textarea((string) ($settings['css_exclusions'] ?? '')); ?></textarea>
+					<span class="optipower-help">Comma/newline-separated list. Matching CSS files are excluded from minification rewrite.</span>
+				</label>
 				<label class="optipower-field">
 					<span class="optipower-label">JS Exclusions (handles or URL fragments)</span>
 					<textarea rows="3" name="<?php echo esc_attr(OptiPower_Settings::OPTION_KEY); ?>[js_exclusions]"><?php echo esc_textarea((string) ($settings['js_exclusions'] ?? '')); ?></textarea>
@@ -462,6 +477,21 @@ class OptiPower_Admin {
 				</label>
 				<?php $this->checkbox_field($settings, 'cache_logged_in_users', 'Cache Logged-in Users', 'Usually keep disabled unless you understand personalized content risks.'); ?>
 				<?php $this->checkbox_field($settings, 'browser_cache_headers', 'Send Browser Cache Headers', 'Adds Cache-Control headers for client-side caching.'); ?>
+				<label class="optipower-field">
+					<span class="optipower-label">Cache URL Exclusions</span>
+					<textarea rows="3" name="<?php echo esc_attr(OptiPower_Settings::OPTION_KEY); ?>[cache_uri_exclusions]"><?php echo esc_textarea((string) ($settings['cache_uri_exclusions'] ?? '')); ?></textarea>
+					<span class="optipower-help">Comma/newline-separated URL fragments. If matched, page cache is skipped.</span>
+				</label>
+				<label class="optipower-field">
+					<span class="optipower-label">Cache Cookie Exclusions</span>
+					<textarea rows="3" name="<?php echo esc_attr(OptiPower_Settings::OPTION_KEY); ?>[cache_cookie_exclusions]"><?php echo esc_textarea((string) ($settings['cache_cookie_exclusions'] ?? '')); ?></textarea>
+					<span class="optipower-help">Comma/newline-separated cookie names/fragments that should bypass cache.</span>
+				</label>
+				<label class="optipower-field">
+					<span class="optipower-label">Cache Query Param Exclusions</span>
+					<textarea rows="3" name="<?php echo esc_attr(OptiPower_Settings::OPTION_KEY); ?>[cache_query_exclusions]"><?php echo esc_textarea((string) ($settings['cache_query_exclusions'] ?? '')); ?></textarea>
+					<span class="optipower-help">Comma/newline-separated query params that should bypass cache.</span>
+				</label>
 			</div>
 			<div class="optipower-actions">
 				<?php submit_button('Save Cache Settings', 'primary', 'submit', false); ?>
