@@ -48,8 +48,13 @@ class OptiPower_Admin {
 			return;
 		}
 
-		wp_enqueue_style('optipower-admin', OPTIPOWER_URL . 'assets/css/admin.css', array(), OPTIPOWER_VERSION);
-		wp_enqueue_script('optipower-admin', OPTIPOWER_URL . 'assets/js/admin.js', array(), OPTIPOWER_VERSION, true);
+		$css_file = OPTIPOWER_PATH . 'assets/css/admin.css';
+		$js_file  = OPTIPOWER_PATH . 'assets/js/admin.js';
+		$css_ver  = file_exists($css_file) ? (string) filemtime($css_file) : OPTIPOWER_VERSION;
+		$js_ver   = file_exists($js_file) ? (string) filemtime($js_file) : OPTIPOWER_VERSION;
+
+		wp_enqueue_style('optipower-admin', OPTIPOWER_URL . 'assets/css/admin.css', array(), $css_ver);
+		wp_enqueue_script('optipower-admin', OPTIPOWER_URL . 'assets/js/admin.js', array(), $js_ver, true);
 
 		wp_localize_script('optipower-admin', 'OptiPowerData', array(
 			'logsEndpoint'    => esc_url_raw(rest_url('optipower/v1/logs')),
@@ -421,7 +426,7 @@ class OptiPower_Admin {
 			<h2>Assets Optimization</h2>
 			<p>Optimize frontend CSS/JS delivery with minification and defer controls.</p>
 		</div>
-		<form id="optipower-ai-settings-form" method="post" action="options.php">
+		<form method="post" action="options.php">
 			<?php settings_fields('optipower_settings_group'); ?>
 			<div class="optipower-form-grid">
 				<label class="optipower-field">
@@ -467,7 +472,7 @@ class OptiPower_Admin {
 				<p>Cache settings saved. Page cache has been purged automatically.</p>
 			</div>
 		<?php endif; ?>
-		<form method="post" action="options.php">
+		<form id="optipower-ai-settings-form" method="post" action="options.php">
 			<?php settings_fields('optipower_settings_group'); ?>
 			<div class="optipower-form-grid">
 				<?php $this->checkbox_field($settings, 'cache_enabled', 'Enable Page Cache', 'Stores full-page HTML output for faster responses.'); ?>

@@ -229,6 +229,12 @@
   border-radius: 10px;
 }
 
+.optipower-ai-actions .button.button-secondary {
+  border-color: #b8d4bd;
+  color: #355437;
+  background: #f5fbf6;
+}
+
 .optipower-summary {
   display: grid;
   grid-template-columns: repeat(4, minmax(120px, 1fr));
