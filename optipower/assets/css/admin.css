@@ -178,6 +178,15 @@
   font-size: 14px;
 }
 
+.optipower-field textarea {
+  border-radius: 10px;
+  border: 1px solid #c7ddca;
+  min-height: 84px;
+  padding: 8px 10px;
+  font-size: 14px;
+  resize: vertical;
+}
+
 .optipower-field input[type="checkbox"] {
   width: 18px;
   height: 18px;
