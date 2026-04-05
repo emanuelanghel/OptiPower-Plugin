@@ -420,7 +420,7 @@ class OptiPower_Admin {
 			<h2>Assets Optimization</h2>
 			<p>Optimize frontend CSS/JS delivery with minification and defer controls.</p>
 		</div>
-		<form method="post" action="options.php">
+		<form id="optipower-ai-settings-form" method="post" action="options.php">
 			<?php settings_fields('optipower_settings_group'); ?>
 			<div class="optipower-form-grid">
 				<?php $this->checkbox_field($settings, 'minify_css', 'Minify CSS', 'Use existing .min.css when available, or generate optimized cached CSS.'); ?>
@@ -550,20 +550,20 @@ class OptiPower_Admin {
 				</label>
 				<?php $this->checkbox_field($settings, 'ai_redact_literals', 'Redact Query Literals', 'Redacts string and numeric literals before AI requests.'); ?>
 			</div>
-			<div class="optipower-actions">
-				<?php submit_button('Save AI Settings', 'primary', 'submit', false); ?>
-			</div>
 		</form>
-		<form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="optipower-self-test-form">
-			<?php wp_nonce_field('optipower_ai_test'); ?>
-			<input type="hidden" name="action" value="optipower_ai_test" />
-			<button type="submit" class="button">Test AI Connection</button>
-		</form>
-		<form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="optipower-self-test-form">
-			<?php wp_nonce_field('optipower_ai_refresh_models'); ?>
-			<input type="hidden" name="action" value="optipower_ai_refresh_models" />
-			<button type="submit" class="button">Refresh OpenAI Models</button>
-		</form>
+		<div class="optipower-actions optipower-ai-actions">
+			<button type="submit" form="optipower-ai-settings-form" class="button button-primary">Save AI Settings</button>
+			<form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="optipower-self-test-form">
+				<?php wp_nonce_field('optipower_ai_test'); ?>
+				<input type="hidden" name="action" value="optipower_ai_test" />
+				<button type="submit" class="button button-secondary">Test AI Connection</button>
+			</form>
+			<form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="optipower-self-test-form">
+				<?php wp_nonce_field('optipower_ai_refresh_models'); ?>
+				<input type="hidden" name="action" value="optipower_ai_refresh_models" />
+				<button type="submit" class="button button-secondary">Refresh OpenAI Models</button>
+			</form>
+		</div>
 		<?php
 	}
 

@@ -204,6 +204,22 @@
   font-weight: 600;
 }
 
+.optipower-ai-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.optipower-ai-actions .optipower-self-test-form {
+  margin: 0;
+}
+
+.optipower-ai-actions .button {
+  min-height: 38px;
+  border-radius: 10px;
+}
+
 .optipower-summary {
   display: grid;
   grid-template-columns: repeat(4, minmax(120px, 1fr));
